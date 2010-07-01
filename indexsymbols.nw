@@ -1,0 +1,467 @@
+% -*- mmm-noweb-code-mode: awk-mode -*-
+\documentclass[12pt,twocolumn]{article}
+\usepackage{mathptmx}
+\usepackage[margin=1in]{geometry}
+\usepackage[longchunks,breakcode]{knoweb}
+\usepackage{fancyvrb,syntax}
+\usepackage{ifpdf,xspace}
+\usepackage{rcs}
+
+\ifpdf
+  \usepackage[pdftex,colorlinks,backref,bookmarks
+  ,pdftitle={A Configurable Noweb Filter for Manually Indexing Symbols}
+  ,pdfauthor={Joseph Riel}
+  ,pdfpagemode={UseOutline}
+  ,bookmarksopen={true}
+  ]{hyperref}
+\else
+  \usepackage[dvips,backref]{hyperref}
+\fi
+
+\newcommand{\bs}{\textbackslash}
+\newcommand{\comment}[1]{\textcolor{red}{\emph{#1}}}
+\newcommand{\package}[1]{\textsf{#1}\xspace}
+\newcommand{\file}[1]{\textsf{#1}\xspace}
+\newcommand{\env}[1]{\textsf{#1}\xspace}
+\newcommand{\cmd}[1]{\textsf{#1}\xspace}
+
+\newcommand{\noweb}{\package{noweb}}
+\newcommand{\noweave}{\package{noweave}}
+\newcommand{\notangle}{\package{notangle}}
+
+\newcommand{\awk}{\cmd{awk}}
+
+\RCS $Revision: 1.3 $
+\RCS $Date: 2005/03/15 03:13:51 $
+
+\pagestyle{noweb}
+
+% Adjust float placement
+
+\renewcommand{\bottomfraction}{0.5}
+
+
+\title{A Configurable  Noweb Filter \\ for Manually Indexing Symbols}
+\author{Joseph S. Riel}
+\date{\normalsize
+  Revision: \RCSRevision
+  \qquad
+  Last Commit: \RCSDate
+}
+
+\begin{document}
+
+\maketitle
+
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+
+The \noweb system of literate programming
+uses a pipeline approach that permits 
+users to insert filters into the pipeline to modify its behaviour.
+Ramsey~\cite{ramsey01:NowebHackersGuide} describes in detail the pipeline
+and its markup language.
+Distributed with the package is a filter, \file{btdefn},
+that can be used to manually index symbols in a \noweb source file.
+The manual indexing is done by prefixing the selected symbols 
+with a back-tick (aka back-quote).  
+
+The \file{btdefn} filter is intended for use with C programs.
+The back-tick does not work well with languages
+that use it as a syntactical element.
+The symbol recognizer, which is designed to match C names,
+is inappropriate for languages (such as Lisp)
+that use a different character set for valid names.
+
+This document describes a modification to the \file{btdefn} filter 
+that permits the user to specify both 
+ the prefix used to identify symbols for indexing
+and
+ a regular expression (regex) that matches a valid name 
+ in the intended language.
+Its default behaviour is the same as \file{btdefn}.
+Its operation, however, may be somewhat slower because
+it uses \awk's regex strings,
+which cannot be precompiled for \awk's regular expression engine.
+
+Because this is my first attempt at writing both 
+ a filter for \noweb and a \awk script,
+I have chosen to 
+ explain the method used to inspect the flow through the pipeline
+and heavily document the operation of the \awk script.
+
+ 
+\section{The Pipeline}
+\label{sec:pipeline}
+
+
+To better understand the stream that is piped through \noweb's filters, %'
+we shall examine the output of the [[markup]] filter.\footnote{
+  As mentioned in~\cite[p.~15]{ramsey01:NowebHackersGuide}, 
+  [[markup]] is really the front-end, not a filter.}
+First, create a simple \noweb source file, \file{simple.nw}.
+Use an exclamation (!) to mark each symbol that is to be indexed.
+This is not a builtin feature of \noweb, rather it will occur
+once we have written the appropriate filter.
+The symbols [[square]] and [[nonsense]] have been marked for indexing.
+Note the presence of the exclamation mark in [[foo!bar]];
+this is used to show one of the limitations of this particular
+implementation.
+
+<<simple.nw>>=
+A short noweb file.
+@@ THE ONE AND ONLY CHUNK.
+A new line of documentation.
+@<<*>>=
+!square := x -> x^2;
+!nonsense := "foo!bar";
+@@
+@
+
+To see the marked up output, direct from the source,
+use the [[tee]] command as a filter to \noweave.
+Here is an appropriate shell command:
+
+
+<<show-markup>>=
+noweave -filter \
+  'tee simple-markup' \
+  simple.nw > /dev/null
+@ 
+
+Figure~\ref{fig:simple-markup}
+shows the contents of the file [[simple-markup]]
+after executing the previous command.
+Note that lines of code are enclosed within a 
+[[@begin code]] \dots{} [[@end code]] environment
+and that each code line is prefaced with [[@text]].
+
+\begin{figure}[tbp]
+  \centering
+  \VerbatimInput[frame=single]{simple-markup}
+  \caption{Contents of \file{simple-markup}}
+  \label{fig:simple-markup}
+\end{figure}
+
+
+
+\section{Filter Requirements}
+\label{sec:filter-requirements}
+
+Our filter, when configured to recognize the exclamation
+as its index mark, should generate index entries
+for the two prefixed symbols, [[square]] and [[nonsense]].
+It should also remove the prefix marks from these symbols.
+
+
+
+
+
+\section{Code}
+\label{sec:code}
+
+
+
+<<indexsymbols>>=
+<<header>>
+BEGIN {<<assign defaults>>}
+<<main loop>>
+END {}
+@ 
+
+The ``pound-bang'' line is inserted by the \texttt{Makefile}
+so that it is correct for each installation.
+%%
+<<header>>=
+# Noweb filter for indexing symbols.
+@ 
+
+
+\subsection{In the Beginning}
+\label{sec:beginning}
+
+
+
+Assign the default values for the [[prefix]] string and the [[symbolre]] 
+regular expression (regex).
+%%
+The string [[prefix]] is prefixed to a symbol 
+to indicate that it is to be indexed; 
+its default value is the back-quote~(`).
+It does not have to be a single character.
+%%
+The [[symbolre]] regex matches the symbol to index;
+its default value matches a valid C~name.
+
+@ 
+
+Set [[codeflag]] [[false]].
+This flag is [[true]] when [[awk]] is processing a line
+in a code section.  
+We do not need to initialize it to [[false]] 
+because the default value of an [[awk]] variable
+is [[0]], which corresponds to [[false]];
+however, doing so clarifies our intention.
+%%
+<<assign defaults>>=
+prefix = "`"
+symbolre = <<C name regex>>
+codeflag = <<false>>
+@ %def prefix symbolre codeflag
+
+
+\subsection{The Main Loop}
+\label{sec:main-loop}
+
+
+<<main loop>>=
+<<changing section, update [[codeflag]]>> ||
+<<not in a code section>> || 
+<<no [[prefix]] in line>> || 
+<<[[prefix]] in a string>> {print;next}
+<<index all prefixed symbols>>
+<<print modified line>>
+@ 
+
+
+\subsection{Tracking the Code Section}
+\label{sec:track-code-sect}
+
+
+
+If the line starts with \lit{[[@begin code]]} or \lit{[[@end code]]}
+then it indicates the beginning or end of a code section,
+respectively.  
+Set [[codeflag]] accordingly, and return [[true]].
+
+<<changing section, update [[codeflag]]>>=
+($0 ~ /^@begin code /) && 
+(codeflag = <<true>>) ||
+($0 ~ /^@end code /) && 
+(codeflag = <<false>>) && <<true>>
+@
+
+
+
+\subsection{Indexing Prefixed Symbols}
+\label{sec:index-pref-symb}
+
+
+
+Search for all instances of a prefixed symbol in the line;
+for each one, insert an index statement into the stream
+and elide the prefix.
+
+<<index all prefixed symbols>>=
+{regex = ("(" prefix ")(" \
+	      symbolre ")")
+ while <<indexed symbol in line>> { \
+  <<insert index statement into stream>>
+  <<elide prefix>>
+  }
+}
+@ %def regex
+
+Return non-zero (true) if [[regex]] matches the current line.
+Assign the multi-dimensional array [[arr]]
+the matched subexpressions of [[regex]].
+The entire match is stored in [[arr[0]]],
+the matched prefix in [[arr[1]]],
+the matched symbol in [[arr[2]]].
+
+<<indexed symbol in line>>=
+(match($0,regex,arr))
+@ %def arr
+%$
+
+Insert the \noweb statement that indexes
+the symbol into the output stream.
+
+<<insert index statement into stream>>=
+print "@index defn", arr[2]
+@ 
+
+
+@
+Remove the prefix from the symbol in the current line
+by substituting the symbol ([[arr[2]]])
+for the entire match ([[arr[0]]]).
+The [[sub]] function without its optional third argument
+substitutes into the current line.
+
+<<elide prefix>>=
+sub(arr[0],arr[2])
+@ 
+
+
+
+\subsection{Print the Modified Line}
+\label{sec:print-modified-line}
+
+Because [[<<elide prefix>>]] modifies the current line,
+stripping the prefix from each match,
+we merely have to print the line as is.
+
+<<print modified line>>=
+{print}
+@ 
+
+\subsection{Miscellaneous}
+\label{sec:miscellaneous}
+
+
+
+<<not in a code section>>=
+!codeflag
+@ 
+
+
+<<no [[prefix]] in line>>=
+$0 !~ ("^@text .*" prefix)
+@
+%$ 
+
+
+If the prefix occurs in a string,
+print the line and skip to the next line.
+
+<<[[prefix]] in a string>>=
+($0 ~ ("^@text " <<[[prefix]] in string>>))
+@
+%$ 
+
+The following regex crudely matches [[prefix]] 
+inside a string delimited by double quotes.  
+In fact, this regex is not particularly robust.
+However, given that prefixed symbols are frequently
+on the left, this will work most of the time.
+
+<<[[prefix]] in string>>=
+".*\".*" prefix ".*\""
+@ 
+
+
+<<C name regex>>=
+"[a-zA-Z_][a-zA-Z0-9_]*"
+@
+
+<<true>>=
+1
+@ 
+
+<<false>>=
+0
+@ 
+
+
+
+\section{Example}
+\label{sec:example}
+
+We now take a look at the effect of this filter on the stream.
+The following command, written to the file [[show-indexsymbols]],
+processes our [[simple.nw]] file with the [[indexsymbols]]
+filter, with the [[prefix]] set to an exclamation point.
+The [[tee]] filter writes the filtered output to [[simple-indexsymbols]].
+
+<<show-indexsymbols>>=
+noweave \
+ -filter 'indexsymbols prefix="!"' \
+ -filter 'tee simple-indexsymbols' \
+  simple.nw > /dev/null
+@ 
+
+Use the \cmd{diff} command, saved in [[show-diff]],
+to display the differences between the two files.
+
+<<show-diff>>=
+diff \
+ simple-markup simple-indexsymbols \
+ > simple-diff
+@ 
+
+Figure~\ref{fig:simple-diff}
+shows the effect of applying the [[indexsymbols]] filter.
+Observe that an [[@index defn]] statement has been inserted
+for the [[square]] symbol and the exclamation mark removed.
+Observe, too, that the [[nonsense]] symbol is not listed;
+that is, it was not indexed nor was its exclamation mark removed.
+This illustrates a weakness with the design of the filter.
+The prefixed [[nonsense]] symbol was not indexed because
+[[<<[[prefix]] in a string>>]] 
+detected an exclamation mark inside a pair of string delimiters, 
+thus preventing the indexing.
+
+
+\begin{figure}[htbp]
+  \centering
+  \VerbatimInput[frame=single]{simple-diff}
+  \caption{Contents of \file{simple-diff}}
+  \label{fig:simple-diff}
+\end{figure}
+
+ 
+<<manpage: indexsymbols.1>>=
+.TH "indexsymbols" 1
+.SH NAME
+.B indexsymbols \- \fBnoweb\fP filter for marking identifiers to be indexed
+.SH SYNOPSIS
+.B noweave -filter indexsymbols \fR...
+.SH DESCRIPTION
+The \fBindexsymbols\fP filter provides a means for manually indexing
+identifiers in a \fInoweb\fP source file.
+In code chunks, each defining instance of an identifier
+is preceded by the chosen \fBprefix\fP character.
+The \fBindexsymbols\fP filter removes these characters from the code 
+and converts them to definitions.
+.SH OPTIONS
+The filter \fBindexsymbols\fP is a \fIawk\fP script 
+that uses dynamic regular expressions to match the 
+prefix and marked identifier.
+Their default values  may be modified by name, 
+that is, by using
+\fIvariable-name\fP=\fIvalue\fP.
+.TP
+.B prefix="\fIstring\fP"
+Reassign the string variable \fBprefix\fP to "\fIstring\fP".
+The \fBprefix\fP variable is (usually) a single character
+that is prefaced to an identifier to mark it for indexing.
+The default is the back-quote ("`").
+.TP
+.B symbolre="\fIregex\fP"
+Reassign the regular expression variable \fBsymbolre\fP to "\fIregex\fP".
+The \fBregex\fP variable must match the entire symbol to be indexed.
+The default, which matches any valid C symbol, is "[a-zA-Z_][a-zA-Z0-9_]*".
+.SH EXAMPLES
+Use the \fBindexsymbols\fP filter with a Lisp \fInoweb\fP source.
+Reassign \fPsymbolre\fP so that it matches (typical) Lisp symbols.
+Note that the backquote (`), which is used as the index mark,
+is not allowed in the symbol name.
+
+.B noweave -filter \'indexsymbols symbolre="[^`[:space:]()]+"' myfile.nw > myfile.tex
+.br
+.B notangle -filter \'indexsymbols symbolre="[^`[:space:]()]+"' myfile.nw > myfile.el
+.SH AUTHOR
+Joseph Riel, \fBjoer@san.rr.com\fP.
+.SH "SEE ALSO"
+.IR notangle (1),
+.IR noweave (1),
+.IR noweb (1),
+.IR nowebfilters (7).
+@
+
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plain}
+\bibliography{papers}
+
+
+\section{Chunks} 
+\nowebchunks
+\section{Index}
+\nowebindex
+
+
+\end{document}

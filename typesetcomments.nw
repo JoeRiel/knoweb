@@ -1,0 +1,801 @@
+% -*- mmm-noweb-code-mode: awk-mode -*-
+
+\documentclass[12pt,twocolumn]{article}
+\usepackage{mathptmx}
+\usepackage[margin=1in]{geometry}
+\usepackage[footnotesizecode,longchunks,breakcode]{knoweb}
+\usepackage{fancyvrb,syntax}
+\usepackage{rcs,url}
+\usepackage{ifpdf,xspace,color}
+
+\ifpdf
+  \usepackage[pdftex,colorlinks,backref,bookmarks
+  ,pdftitle={Noweb Filters for Typesetting Comments in Code Chunks}
+  ,pdfauthor={Joseph Riel}
+  ,pdfpagemode={UseOutline}
+  ,bookmarksopen={true}
+  ]{hyperref}
+\else
+  \usepackage[dvips,backref]{hyperref}
+\fi
+
+\RCS $Revision: 1.8 $
+\RCS $Date: 2005/03/15 03:14:45 $
+\renewcommand{\today}{\RCSRawDate}
+
+% new commands
+
+\newcommand{\program}[1]{\texttt{#1}\xspace}
+\newcommand{\noweb}{\program{noweb}}
+\newcommand{\noweave}{\program{noweave}}
+\newcommand{\notangle}{\program{notangle}}
+\newcommand{\awk}{\program{awk}}
+
+\newcommand{\comment}{\emph}
+ 
+\pagestyle{noweb}
+\setcounter{tocdepth}{5}     % include all sections in toc
+
+\begin{document}
+
+\title{Noweb Filters for Typesetting Comments \\ in Code Chunks}
+\author{Joseph S. Riel \quad \href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
+\date{\normalsize
+  Revision: \RCSRevision
+  \qquad
+  Last Commit: \RCSDate \ UTC
+}
+\maketitle
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+The program \noweave~\cite{ramsey94:LiterProgSimpl},
+  generates a \TeX{} file that
+typesets comments in a code chunk 
+in the same fixed-width font that it uses for the code itself.
+%%
+For most uses this is reasonable:
+  a \noweb source does not generally have many comments in code chunks%
+  ---comments belong in the documentation chunks.
+%%
+For some applications, however, it can be advantageous
+to typeset short comments within a code chunk.
+
+Adding this capability to \noweave is simple
+because of its pipelined architecture.
+We need two components:
+  (1)~a \noweave filter that detects specially marked comments
+     and surrounds them with an appropriate \LaTeX{} environment,
+and
+  (2)~a \LaTeX{} style that assigns the environment.
+
+This document assigns two filters,
+ one for typesetting inline comments
+and
+ one for typesetting multiline comments.
+It also assigns a \LaTeX{} style file
+that can be used with inline comments.
+To properly typeset multiline comments
+the [[noweb.sty]] file must be revised.
+For that, the style file [[knoweb.sty]]\footnote{
+  The \LaTeX{} style file [[knoweb.sty]]
+  is a complete rewrite of [[noweb.sty]].}
+is available.
+
+
+
+\section{Inline Comments}
+\label{sec:inlinecomment-filter}
+
+
+\subsection{Operation}
+\label{sec:operation}
+
+
+
+The \noweave filter that handles typeset inline comments
+searches the code sections of a \noweb stream
+for the unique string that indicates 
+the start of a typeset inline comment;
+the end of the line terminates the comment.
+If found, it inserts an \lit{[[@literal]]} statement
+into the stream and then wraps the comment
+in a \LaTeX{} [[nwtypesetcomment]] environment.
+%%
+For example, consider the code fragment
+%%
+\begin{verbatim}
+ nada #!Here is a comment
+\end{verbatim}
+%%
+where \lit{\#!} starts a typeset inline comment.
+The \noweave front-end outputs this statement
+as
+%%
+\begin{verbatim}
+ @text nada #!Here is a comment
+\end{verbatim}
+
+The [[inlinecomments]] filter 
+with arguments [[commentre]] and [[commentshow]]
+assigned to \lit{\#!} and \lit{\# },
+respectively,
+converts this line to
+%%
+\begin{verbatim}
+ @text nada 
+ @literal # \begin{nwtypesetcomment}
+              Here is a comment
+            \end{nwtypesetcomment}
+\end{verbatim}
+%%
+where everything in the fragment
+following \lit{[[@literal]]} is on one line.
+%%
+Note that the exclamation, \lit{!},
+was replaced by a space in the output.
+
+
+\subsection{Structure}
+\label{sec:structure}
+
+
+The [[inlinecomments]] filter is written in \awk.
+
+<<inlinecomments>>=
+<<header>>
+BEGIN {<<inline: assign defaults>>}
+  <<changing section, update [[codeflag]]>> ||
+  <<not in a code section>> ||
+  <<no inline comment>> {print;next}
+  <<handle comment>>
+END {}
+@ 
+
+\subsection{Default Assignments}
+\label{sec:default-assignments}
+
+Assign the default values for the variables [[commentre]] and [[commentshow]].
+These assignments are overriden by command line arguments to the filter.
+
+The variable [[commentre]] is a regular expression that uniquely identifies
+the start of a comment.  Its first character must be the inline comment starter
+of the target language (the default is for Maple).  It should be at least two
+characters long to reduce the possibility of an undesired match, say in a string.
+
+The variable [[commentshow]] is the text that replaces the [[commentre]] string
+in the output.  It is output before the [[nwtypesetcomment]] environment is started,
+so it is typeset (almost) verbatim; however, backslashes and braces must be escaped.
+The default value prints the Maple comment character and adds a space because
+\LaTeX{} removes spaces at the start of the comment.
+
+@
+The boolean variable [[codeflag]] is used to keep track of whether
+the current line is in a code section.  
+
+<<inline: assign defaults>>=
+commentre   = "#!"
+commentshow = "# "
+codeflag = <<false>>
+@ %def commentre commentshow codeflage
+
+
+
+\subsection{Tracking the Code Section}
+\label{sec:track-code-sect}
+
+A line starting with either \lit{[[@begin code]]} or \lit{[[@end code]]}
+indicates the beginning or end of a code section,
+respectively.  
+Set [[codeflag]] accordingly, and return [[true]].
+
+<<changing section, update [[codeflag]]>>=
+($0 ~ /^@begin code /) && 
+(codeflag = <<true>>) ||
+($0 ~ /^@end code /) && 
+(codeflag = <<false>>) && <<true>>
+@
+
+
+<<not in a code section>>=
+!codeflag
+@ 
+
+<<true>>=
+1
+@ 
+
+<<false>>=
+0
+@ 
+
+
+\subsection{Handling an Inline Comment}
+\label{sec:handling-an-inline}
+
+To process an inline comment
+ elide it from the current line,
+ print the modified line,
+then 
+ insert the comment, with the appropriate markup,
+ back into the stream.
+%%
+<<handle comment>>=
+{ regex = ("^(@text .*)" commentre "(.*)")
+  <<get comment>>
+  <<print line without comment>>
+  <<insert comment into stream>> }
+@ %def regex
+
+@
+Assign the matched subexpression of [[regex]] to the array [[arr]].
+The entire match (which we do not use) is stored in the 0th position,
+the match before the comment starter is stored in the 1st position,
+the match after the comment starter is stored in the 2nd position.
+%%
+<<get comment>>=
+match($0,regex,arr)
+@ %def arr
+%$
+
+
+<<print line without comment>>=
+print(arr[1])
+@
+
+@
+Enclose everything on the line after the comment starter
+in the \LaTeX{} [[nwtypesetcomment]] environment.
+To prevent \noweave from escaping backslashes and braces
+use the \lit{[[@literal]]} keyword.
+%%
+<<insert comment into stream>>=
+print("@literal", 
+      (commentshow \
+       "\\begin{nwtypesetcomment}" \
+       arr[2] \
+       "\\end{nwtypesetcomment}"))
+@
+
+
+@
+Return true if the line does not contain an inline comment.
+No attempt is made to detect whether the match is inside a string.
+
+<<no inline comment>>=
+$0 !~ commentre
+@
+%$
+
+
+\subsection{Awk Header}
+\label{sec:awk-header}
+
+%%
+<<header>>=
+<<pound-bang>>
+# A Noweb filter for typesetting inline 
+# comments.
+<<header boilerplate>>
+@
+
+The ``pound-bang'' line informs the shell that this is a \awk{} script.
+The [[--file]] option to \awk{} tells it that this file is its source script.
+\emph{Note that this line is omitted from the generated output;
+  instead it is inserted by the \texttt{Makefile} where the location
+  of \texttt{awk} can be more easily modified by the user.}
+%%
+<<pound-bang>>=
+@
+
+<<pound-bang-missing>>=
+#!/usr/bin/awk --file
+@
+
+@
+<<header boilerplate>>=
+# DO NOT edit this file, use 
+# typesetcomments.nw. 
+# The documentation for this file is 
+# in typesetcomments.pdf.  
+
+@
+
+\section{Multiline Comments}
+\label{sec:multilinecomments-filter}
+
+Some programming languages have a multiline comment facility.
+The beginning of the comment 
+is indicated by a \emph{comment-begin} string,
+the end of the comment by a \emph{comment-end} string.
+For C these are \lit{/*} and \lit{*/}, respectively.
+
+To typeset a multiline comment,
+we define \emph{typeset-comment-begin} and
+\emph{typeset-comment-end} strings;
+when inserted into the source they should form
+a multiline comment, but have extra characters to
+distinguish them from a standard (non-typeset)
+multiline comment.
+
+Here is the outline of [[multilinecomments]],
+a \awk filter that handles multiline comments.
+%%
+<<multilinecomments>>=
+<<multiline: header>>
+BEGIN {<<multiline: assign defaults>>}
+ <<multiline: assign functions>>
+ <<multiline: main loop>>
+END {}
+@
+
+
+
+\subsection{Default Assignments}
+\label{sec:multi-default-assignments}
+
+The strings [[begin]] and [[end]] are assigned
+regular expressions that match the 
+\emph{typeset-comment-begin} and \emph{typset-comment-end}
+strings.
+Their defaults values match \lit{/*!} and \lit{!*/}, respectively.
+Because the asterisk is a special character in
+regular expressions, it is enclosed in square brackets.
+
+The strings [[beginshow]] and [[endshow]]
+are the strings that replace [[begin]] and [[end]]
+in the typset output.  
+The default values elide the exclamation point.
+
+<<multiline: assign defaults>>=
+begin = "/[*]!"
+end = "![*]/"
+beginshow = "/*"
+endshow = "*/"
+codeflag = <<false>>
+commentflag = <<false>>
+@ %def begin end beginshow endshow codeflag commentflag
+
+
+
+\subsection{Function Assignments}
+\label{sec:multi-function-assignments}
+
+Assign functions for handling the code and comment
+portions of a typeset multiline comment.
+
+
+<<multiline: assign functions>>=
+function printcode(str)
+{print("@text",str)}
+@ %def printcode
+
+
+<<multiline: assign functions>>=
+function printcomment(str)
+{print("@literal",str)}
+@ %def printcomment
+
+
+\subsection{The Main Loop}
+\label{sec:multi-main-loop}
+
+
+<<multiline: main loop>>=
+<<changing section, update [[codeflag]]>> ||
+<<not in a code section>> ||
+<<not in a multiline comment>> &&
+<<no multiline comment start>> {print;next}
+{if (<<not in a multiline comment>>)
+   {<<start multiline comment>>}
+ else
+   {<<continue multiline comment>>}
+}{next}
+@
+
+\subsubsection{Start of Comment}
+\label{sec:start-comment}
+
+Having detected the [[begin]] regular expression,
+print everything up to the [[begin]] as it was, 
+and then begin a typeset multiline comment.
+%%
+<<start multiline comment>>=
+<<print line up to comment>>
+begincomment(substr($0,RSTART+RLENGTH))
+@
+%$
+
+
+@
+Print the line up to the beginning of the comment,
+eliding the comment starter.
+<<print line up to comment>>=
+print(substr($0,1,RSTART-1))
+@
+%$
+
+@
+Begin a multiline comment.
+The input string, [[str]],
+has had the \emph{typset-comment-begin} string removed.
+Print the string, [[beginshow]], that replaces that string,
+start the \LaTeX{} environment,
+then look for and handle the end of the comment.
+%%
+<<multiline: assign functions>>=
+function begincomment(str)
+{ <<begin comment environment>>
+  commentflag = <<true>>
+  if (<<end of comment in string>>)
+    { printcomment(substr(str,1,RSTART-1))
+      endprintcomment(substr(str,
+                     RSTART+RLENGTH)) }
+  else
+    { printcomment(substr(str,1)) }
+}
+@ %def begincomment
+
+
+End a multiline comment.
+The input string, [[str]],
+has had the \emph{typset-comment-end} string removed.
+Print the string, [[endshow]], that replaces that string,
+end the \LaTeX{} environment,
+then look for and handle
+a beginning of another comment.
+%%
+<<multiline: assign functions>>=
+function endprintcomment(str)
+{ <<end comment environment>>
+  commentflag = <<false>>
+  if (<<beginning of comment in string>>)
+    { printcode(substr(str,1,RSTART-1))
+      begincomment(substr(str,
+                       RSTART+RLENGTH)) }
+  else
+    { printcode(substr(str,1)) }
+}
+@ %def endcomment
+
+
+
+
+<<end of comment in string>>=
+match(str,end)
+@
+
+<<beginning of comment in string>>=
+match(str,begin)
+@
+
+
+
+@
+\subsubsection{Comment Continuation}
+\label{sec:comment-continuation}
+
+When a multiline comment has been started,
+just check for the [[end]] expression.
+If it is not present, pass the line
+as a literal (replace the \lit{[[@text]]}
+keyword with \lit{[[@literal]]}).
+
+If the [[end]] expression is present,
+pass everything up to it as a literal,
+the pass everything after the [[end]] statement
+to [[endcomment]].
+%%
+<<continue multiline comment>>=
+<<pass non-text keywords>>
+if (<<end of comment in line>>)
+   {printcomment(substr($0,<<offset>>,
+                   RSTART-<<offset>>))
+    endprintcomment(substr($0,
+                      RSTART+RLENGTH))}
+else 
+   {printcomment(substr($0,<<offset>>))}
+@
+
+
+<<pass non-text keywords>>=
+if ($0 !~ /^@text/) {print;next}
+@
+
+
+Code lines start with \lit{@text };
+the offset is one greater than the length of that string.
+%%
+<<offset>>=
+7
+@
+
+
+
+@
+\subsubsection{Comment Environment}
+\label{sec:comment-environment}
+
+
+
+<<begin comment environment>>=
+printcomment(beginshow)
+printcomment("\\begin{nwtypesetcomment}")
+@
+
+<<end comment environment>>=
+printcomment("\\end{nwtypesetcomment}")
+printcomment(endshow)
+@
+
+<<end of comment in line>>=
+match($0,end)
+@
+
+@
+<<not in a multiline comment>>=
+!commentflag
+@
+
+@
+<<no multiline comment start>>=
+!match($0,begin)
+@
+%$
+
+<<multiline: header>>=
+<<pound-bang>>
+# A Noweb filter for typesetting 
+# multiline comments.  
+<<header boilerplate>>
+@
+
+
+\section{The \LaTeX{} Package}
+\label{sec:latex-package}
+
+
+After filtering a \noweb source file
+through the [[inlinecomments]] or [[multilinecomments]] filter,
+typeset comments in code chunks
+are enclosed within a \LaTeX{} [[nwtypesetcomment]] environment.
+%%
+The following code writes this environment
+to the file [[typesetcomments.sty]],
+which can be used with the [[noweb.sty]] package
+to typeset inline comments.
+It can also be used with with multiline comments,
+however, because
+[[noweb.sty]] assigns the nominal width of code lines 
+much greater than the normal line width the results
+are usually unacceptable.  
+The revised version of [[noweb.sty]], [[knoweb.sty]], fixes
+this problem, but, 
+because it also assigns the [[nwtypesetcomment]] environment, 
+this \LaTeX{} package is then not needed.
+
+
+
+<<typesetcomments.sty>>=
+<<style file header>>
+<<\LaTeX{} identification>>
+<<assign environment>>
+<<assign font command>>
+<<assign comment paragraph>>
+\endinput
+@
+
+
+
+\subsection{Package Header}
+\label{sec:package-header}
+
+
+<<style file header>>=
+% typesetcomments.sty
+%
+% A LaTeX style file for typesetting 
+% comments in a noweb document.  
+% DO NOT edit this file, use 
+% typesetcomments.nw.  
+% The documentation for this file is in 
+% typesetcomments.pdf.  This style file 
+% is intended to be used with the 
+% inlinecomments noweb filter.
+@
+
+
+
+\subsection{Package Identification}
+\label{sec:pack-ident}
+
+
+
+
+@
+
+<<\LaTeX{} identification>>=
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{typesetcomments}
+@
+
+
+
+\subsection{Environment}
+\label{sec:environment}
+
+
+
+@
+Assign the environment used to typeset an inline comment.
+Call [[\nwtypesetcommentfont]] to select the font type,
+then restore the category codes of most of the special characters.
+
+<<assign environment>>=
+\newenvironment{nwtypesetcomment}
+{\def\par{\nw@commentpar}%
+ \nwtypesetcommentfont
+ \catcode`\$=3
+ \catcode`\&=4
+ \catcode`\^^M=5
+ \catcode`\#=6
+ \catcode`\^=7
+ \catcode`\_=8
+ \catcode`\ =10
+ \catcode`\^^I=10
+ \catcode`\~=13
+ \catcode`\%=14
+ \let\{=\nwlbrace
+ \let\}=\nwrbrace
+ \let\\=\nwbackslash
+}
+{}
+@ %def nwtypesetcomment
+
+@
+Assign a command that sets the font used in an inline comment.
+The default assignment is to use the roman family.
+
+<<assign font command>>=
+\newcommand\nwtypesetcommentfont{\rmfamily}
+@ %def \nwtypesetcommentfont
+
+
+@
+
+Code chunks reassign the [[\par]] macro.
+To work properly in multiline comment, 
+[[\par]] must be reassigned its ``normal'' expansion.
+Save that expansion in [[\nw@commentpar]].
+%%
+<<assign comment paragraph>>=
+\newcommand{\nw@commentpar}{}
+\let\nw@commentpar=\par
+@ %def \nw@commentpar
+
+
+
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plain}
+\bibliography{papers}
+
+
+
+\section{Chunks} 
+\nowebchunks
+
+\section{Index}
+\nowebindex
+
+<<manpage: inlinecomments.1>>=
+.TH "inlinecomments" 1
+.SH NAME
+.B inlinecomments \- \fBnoweb\fP filter for typesetting inline comments
+.SH SYNOPSIS
+.B noweave -filter inlinecomments \fR...
+.SH DESCRIPTION
+The \fBinlinecomments\fP filter 
+wraps specially marked inline comments in 
+the \fILaTeX\fP environment
+\fB\\begin{nwtypesetcomment}\fP ... \fB\\end{nwtypesetcomment}\fP
+and passes them as \fIliteral\fP text;
+that is, backslashes and curly braces are not escaped.
+With the use of a suitable \fILaTeX\fP style (\fBknowebstyle\fP) 
+the marked comments are interpreted as \fILaTeX\fP code.
+.SH OPTIONS
+The filter \fBinlinecomments\fP is a \fIawk\fP script 
+that uses dynamic regular expressions to match the 
+typeset comment starter string and the displayed string.
+Their default values may be modified by name, 
+that is, by using
+\fIvariable-name\fP=\fIvalue\fP.
+.TP
+.B commentre="\fIregex\fP"
+Reassign the variable \fBcommentre\fP to "\fIregex\fP".
+The \fBcommentre\fP variable is a regular expression
+that indicates the start of a typeset comment.
+The default is "#!".
+The comment starts immediately after the match;
+it ends at the end of the line.
+.TP
+.B commentshow="\fIstring\fP"
+Reassign the string variable \fBcommentshow\fP to "\fIstring\fP".
+This string replaces what \fIcommentre\fP matches in code chunks.
+The default is "# ".
+.SH EXAMPLES
+Use the \fBinlinecomments\fP filter with a Lisp \fInoweb\fP source.
+Reassign \fPcommentre\fP so that it matches the Lisp comment starter (;)
+with an added exclamation to distinguish it from a regular comment:
+
+.RS
+.B noweave\ -filter\ \'inlinecomments\ commentre=";!"\ commentshow=";\ "' ...
+.RE
+.SH AUTHOR
+Joseph Riel, \fBjoer@san.rr.com\fP.
+.SH "SEE ALSO"
+.IR noweave (1),
+.IR noweb (1),
+.IR nowebfilters (7),
+.IR knowebstyle (7),
+.IR multilinecomments (1).
+<<manpage: multilinecomments.1>>=
+.TH "multilinecomments" 1
+.SH NAME
+.B multilinecomments \- \fBnoweb\fP filter for typesetting multiline comments
+.SH SYNOPSIS
+.B noweave -filter multilinecomments ...
+.SH DESCRIPTION
+The \fBmultilinecomments\fP filter 
+wraps specially marked multiline comments in 
+the \fILaTeX\fP environment
+\fB\\begin{nwtypesetcomment} ... \\end{nwtypesetcomment}\fP
+and passes them as \fIliteral\fP text;
+that is, backslashes and curly braces are not escaped.
+With the use of a suitable \fILaTeX\fP style (\fBknowebstyle\fP) 
+the marked comments are interpreted as \fILaTeX\fP code.
+.SH OPTIONS
+The filter \fBmultilinecomments\fP is a \fIawk\fP script 
+that uses dynamic regular expressions to match the 
+typeset comment begin and end strings.
+Their default values may be modified by name, 
+that is, by using
+\fIvariable-name\fP=\fIvalue\fP.
+.TP
+.B begin="\fIregex\fP"
+Reassign the variable \fBbegin\fP to "\fIregex\fP".
+This regular expression indicates the start of a typeset multiline comment.
+The default is "/[*]!".
+The rectangular brackets around the asterisk make it behave as a normal character.
+.TP
+.B end="\fIregex\fP"
+Reassign the variable \fBend\fP to "\fIregex\fP".
+This regular expression indicates the end of a typeset multiline comment.
+The default is "![*]/".
+The rectangular brackets around the asterisk make it behave as a normal character.
+.TP
+.B beginshow="\fIstring\fP"
+The string that replaces the match to \fBbegin\fP.
+The default is "/*".
+.TP
+.B endshow="\fIstring\fP"
+The string that replaces the match to \fBend\fP.
+The default is "*/".
+.SH AUTHOR
+Joseph Riel, \fBjoer@san.rr.com\fP.
+.SH "SEE ALSO"
+.IR noweave (1),
+.IR noweb (1),
+.IR nowebfilters (7),
+.IR knowebstyle (7),
+.IR inlinecomments (1).
+@
+
+
+
+\end{document}
+
+% Local Variables:
+% indent-tabs-mode: nil
+% End:

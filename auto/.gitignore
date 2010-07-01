@@ -1,0 +1,9 @@
+/.gitignore~
+/autodefs.el
+/autodefs.elisp.el
+/autodefs.maple.el
+/autodefs.matlab.el
+/autodefs.python.el
+/indexsymbols.el
+/knoweb.el
+/typesetcomments.el

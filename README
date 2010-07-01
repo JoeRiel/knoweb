@@ -1,0 +1,21 @@
+This package, noweb-extra, provides extensions for the noweb package.
+
+Miscellaneous Filters:
+----------------------
+     indexsymbols : extends the btdefn filter to permit manually index symbols
+   inlinecomments : typeset inline comments
+multilinecomments : typeset multiline comments
+    stripmodeline : strip an emacs mode line from generated noweb files
+
+Autodef Filters:
+----------------
+autodefs.elisp
+autodefs.maple
+autodefs.matlab
+autodefs.python
+
+LaTeX Styles:
+-------------
+knoweb.sty : improvement of noweb.sty
+
+ -- Joe Riel <joer@san.rr.com>, Tue,  1 Jan 2008 16:56:14 -0800

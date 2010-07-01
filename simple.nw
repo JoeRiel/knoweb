@@ -1,0 +1,7 @@
+A short noweb file.
+@ THE ONE AND ONLY CHUNK.
+A new line of documentation.
+<<*>>=
+!square := x -> x^2;
+!nonsense := "foo!bar";
+@

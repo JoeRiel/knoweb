@@ -1,0 +1,7 @@
+2008-01-28  Joe Riel  <joer@san.rr.com>
+
+	* Makefile:
+	1. Added install-pdf target
+	2. Removed dependencies from bbl target; it must be manually called
+	   after extracting the tex files.
+	   

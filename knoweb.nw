@@ -1,0 +1,3463 @@
+% -*- mmm-noweb-code-mode: tex-mode; -*-
+\documentclass[12pt,oneside]{article}
+%\usepackage[logonly]{trace}
+\usepackage[margin=1in]{geometry}
+%\usepackage[T1]{fontenc}
+\usepackage{mparhack}
+\usepackage{mathptmx}
+\usepackage[smallcode,longchunks,shortxref]{knoweb}
+\usepackage{syntax,xspace,paralist}
+\usepackage{rcs}   % from CTAN (macros/latex/contrib/rcs/rcs.sty), by Joachim Schrod
+\usepackage{color}
+\usepackage{ifpdf}
+\ifpdf
+\usepackage[pdftex,colorlinks,backref,bookmarks
+  ,pdftitle={knoweb.sty}
+  ,pdfauthor={Joseph Riel}
+  ,pdfpagemode={UseOutline}
+  ,bookmarksopen={true}
+  ]{hyperref}
+\else
+  \usepackage[dvips,backref]{hyperref}
+\fi
+
+\RCS $Revision: 1.31 $
+\RCS $Date: 2005/05/04 04:13:58 $
+
+\pagestyle{noweb}
+
+% macros
+
+\let\param=\synt
+
+\newcommand{\comment}[1]{\textcolor{blue}{#1}}
+\newenvironment{harangue}{\color{blue}}{}
+
+\newcommand{\stylehook}{\marginpar{\raggedright\sl Style hook}}
+\newcommand{\file}[1]{\texttt{#1}}
+\newcommand{\noweb}{\texttt{noweb}\xspace}
+\newcommand{\noweave}{\texttt{noweave}\xspace}
+\newcommand{\knoweb}{\texttt{knoweb}\xspace}
+\newcommand{\bs}{\textbackslash}
+\newcommand{\bss}{\bs\bs}
+
+\newcommand\alabel[1]{\synt{label${}_{#1}$}}
+\newcommand\bslabel[1]{\bs\bs\alabel{#1}}
+\newcommand\akey[1]{\synt{key${}_{#1}$}}
+\newcommand\bskey[1]{\bs\bs\akey{#1}}
+\newcommand\chunkid[1]{\synt{chunk id${}_{#1}$}}
+\newcommand\range[1]{\synt{range${}_{#1}$}}
+
+
+\title{\file{knoweb.sty}\\
+  A \LaTeX{} package for \noweb}
+\author{Joseph Riel\quad\href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
+
+\date{\normalsize
+  Revision: \RCSRevision
+  \qquad
+  Last Commit: \RCSDate
+}
+
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+
+
+\section{User Guide}
+\label{sec:user-guide}
+
+
+
+\subsection{Introduction}
+\label{sec:introduction}
+
+This document describes the \LaTeX{} package \file{knoweb.sty}.
+It is based on \file{noweb.sty}~\cite{ramsey:TeXLaTeXSupportNoweb},
+much of the code and comments are copied verbatim.
+There are, however, some significant differences:
+
+\begin{description}
+
+\item[\TeX]
+  Support for plain \TeX{} has been removed.
+
+\item[Options]
+  The [[\noweboptions]] macro has been removed;
+  package options are passed as standard \LaTeX{} package options.
+  Two new options are [[spanish]] and [[twocolumn]].
+  One drawback of removing [[\noweboptions]] is that the [[shift]]
+  filter for \noweave used it.  
+
+\item[Line Size]
+  The dimension macros [[\codehsize]] and [[\nwdefspace]] have been removed.
+  The purpose of [[\codehsize]], so far as I could ascertain, was to
+  prevent overflox box warnings, however, it was not clear that it did so.
+  The purpose of [[\nwdefspace]] was to align the chunk cross-references
+  on the definition line; this is better done by using [[\linewidth]].
+
+\item[Margin Tags] 
+  The macro [[\nwthemargintag]] has been removed, its functionality 
+  has been incorporated into [[\nwmargintag]].
+  The macro [[\nwmarginglue]] was removed; [[\marginparsep]] now
+  sets the space between a margin tag and the text body.  
+  This was done so that the option [[twocolumn]] could be added to
+  the package; when it is active margin tags are set using
+  [[\marginpar]], modified by the \file{mparhack.sty} package.
+  Tags in the second column are set in the right margin.
+    
+  
+\end{description}
+
+
+
+
+\subsection{Options}
+\label{sec:options}
+
+Package options to \knoweb are passed in the standard \LaTeX{} fashion,
+as a list of comma-separated fields enclosed in square brackets
+to the [[\usepackage]] command.
+For example
+\begin{verbatim}
+  \usepackage[footnotesizecode,longchunks,spanish]{knoweb}
+\end{verbatim}
+%%
+passes the options [[footnotesizecode]], [[longchunks]], and [[spanish]]
+to \knoweb.
+
+
+\subsubsection{Code Font}
+\label{sec:opts-code-font}
+
+Options are provided to set the font-family and font-size of the typset code.
+Each standard \LaTeX{} font-size setting declaration,
+[[\tiny]] to [[\Huge]],
+has a corresponding option, with [[code]] appended.
+Thus the option [[footnotesizecode]] set the font size of the typeset code
+to [[\footnotesize]].  The default is [[normalsizecode]].
+
+
+\subsubsection{Marginalia}
+\label{sec:opts-marginalia}
+
+Tags can be inserted into the margins indicating
+the page number or sub-page number of code chunks.
+Several options affect the style and placement of these tags.
+
+The options [[margintag]] and [[nomargintag]] enable and disable
+the printing of these tags.  The default is [[margintag]].
+
+Normally margin tags are printed in the left margin,
+in-line with a chunk definition.  However, if the
+[[twocolumn]] option is given and the document is in two-column mode,
+the tags for chunks that start in the second column 
+are printed in the right margin.  
+The [[twocolumn]] option does not need to be explicitly passed to \knoweb;
+the more usual method is to pass to [[\documentclass]]---\LaTeX's
+package option mechanism passes it to \knoweb.
+
+
+\subsubsection{Chunk Labeling}
+\label{sec:opts-chunk-labeling}
+
+Several options are provided for labeling code chunks.
+
+\begin{description}
+\item [[alphasubpage]]:
+  label code chunk definitions with the field \synt{pagenumber}\synt{subpage},
+ where \synt{subpage} is a lower-case character, 
+ starting at \lit{a} and incremented for each new code chunk definition on a page.
+ This is the default.
+
+\item [[numsubpage]]
+  Similar to [[alphasubpage]] but \synt{subpage} is an integer starting from~1
+  and separated from \synt{pagenumber} by a decimal.
+
+\item [[nosubpage]]
+  Turn off the subpage designator.
+
+\item [[webnumbering]]
+  Sequentially number code chunks through the document.
+
+\item [[shortstrings]]
+  Used with [[alphasubpage]]; limits the the \synt{subpage} designator
+  to a single character (\lit{a} through \lit{z}).  This is the default.
+
+\item [[longstrings]]
+  Used with [[alphasubpage]] to extend the \synt{subpage} designator
+  to multiple characters.  Only needed for those rare documents 
+  with more than 26 chunk definitions on a single page.
+
+\end{description}
+
+
+\subsubsection{Chunk Name Breaking}
+\label{sec:opts-chunk-name-breaking}
+
+The option [[donotbreakchunknames]] prevents breaking chunk names 
+in the documentation across lines.
+The default behaviour is to permit such breaks.
+
+
+\subsubsection{Code Breaking}
+\label{sec:opts-usage-code-breaking}
+
+The option [[breakcode]] permits breaking code
+to use less vertical white space.
+The parameter [[\nwbreakcodespace]] controls the amount
+of white space that may be left on a page,
+see~\S\ref{sec:style-hooks}.
+
+
+\subsubsection{Cross References}
+\label{sec:opts-cross-references}
+
+Code chunk definitions can include cross-references to other code chunks.
+Three mutually exclusive options are provided:
+%%
+\begin{description}
+\item [[shortxref]]:
+  Insert tags in the definition line of a chunk assignment.
+  This is the default.
+\item [[longxref]]:
+  Insert tags in small paragraphs, at the end of a chunk,
+  as in Knuth.
+\item [[noxref]]:
+  Insert no cross references.
+\end{description}
+
+
+\subsubsection{Identifiers}
+\label{sec:opts-identifiers}
+
+Subscripts or hyperlinks can be used with indexed symbols
+to point to their definitions. 
+%%
+The options [[subscriptidents]] and [[nosubscriptidents]]
+turn on and off the subscripting.
+%%
+The options [[hyperidents]] and [[nohyperidents]]
+turn on and off hyperlinks.
+
+
+\subsubsection{Indices}
+\label{sec:opts-indices}
+
+The [[longchunks]] option adds indices after each chunk name
+in the chunk index (produced by [[\nowebchunks]])
+indicating where it is defined and where it is used.
+
+The [[externalindex]] option modifies the operation of [[\nowebindex]]
+to insert an external index, one created by \texttt{noindex}.
+
+\subsubsection{Languages}
+\label{sec:opts-languages}
+
+Support for inserting text appropriate text for a specified language
+in the printed chunk cross-references is provided by the
+language options
+[[english]], [[american]], [[french]], [[frenchb]], [[german]], [[ngerman]], [[spanish]], and [[portuges]].
+The default is [[english]]. 
+The options [[american]] and [[english]] are identical,
+as are [[frenchb]] and [[french]],
+and [[german]] and [[ngerman]].
+
+
+
+
+
+\subsection{Commands}
+\label{sec:commands}
+
+
+\subsubsection{Indices}
+\label{sec:cmds-indices}
+
+The command [[\nowebchunks]] creates an index of the chunks.
+If the [[longchunks]] package option is selected,
+each entry in the index includes links to the definition and uses of the chunk.
+A preamble describing these links is also printed,
+unless the starred version of the command, [[\nowebchunks*]], is used.
+
+The command [[\nowebindex]] creates an index of the identifiers.
+Each entry in the index includes links to the definition and uses of the identifier.
+A preamble describing these links is also printed,
+unless the starred version of the command, [[\nowebindex*]], is used.
+The package option [[externalindex]] changes the operation 
+to use an external index, see~\ref{sec:opts-indices}.
+
+
+
+\subsection{Style Hooks}
+\label{sec:style-hooks}
+
+\begin{description}
+
+\item [[\nwcodeindent]]:
+  length parameter that sets the indentation of the code.
+
+  Use [[\setlength{\nwcodeindent}]]\{\synt{new value}\} 
+  to reassign it.
+
+\item [[\nwcodecommentsep]]:
+  length parameter that sets the vertical separation
+  between the end of a code chunk and any following annotation.
+  
+  Use [[\setlength{\nwcodecommentsep}]]\{\synt{new value}\} 
+  to reassign it.
+
+\item [[\nwcodepenalty]]: 
+  counter that sets the penalty 
+  for page breaking between lines of a code chunk.
+  The default is [[\@highpenalty]].
+  
+  Use [[\nwcodepenalty]]=\synt{new value} to reassign it.
+
+\item [[\nwtagstyle]]:
+  macro that sets the font in which tags are displayed.
+
+  Use [[\renewcommand{\nwtagstyle}]]\{\synt{new definition}\}
+  to reassign it.
+
+\item [[\nwbreakcodespace]]:
+  Used with the package option [[breakcode]], see~\S\ref{sec:usage-code-breaking}.
+  It controls the amount of vertical space left on a page
+  when a code chunk is broken.
+  The default is [[0.2in]].
+
+  Use [[\setlength{\nwebreakcodespace}]]\{\synt{new definition}\}
+  to reassign it.
+
+
+\end{description}
+
+@
+\section{Code}
+\label{sec:code}
+
+
+<<knoweb.sty>>=
+<<identification>>
+<<initial code>>
+<<declaration of options>>
+<<execution of options>>
+\ProcessOptions\relax
+@
+
+
+<<identification>>=
+% knoweb.sty -- LaTeX support for noweb
+% DO NOT read or edit this file.  Use knoweb.nw instead.
+\ProvidesPackage{knoweb}
+\NeedsTeXFormat{LaTeX2e}
+@
+
+@
+The [[<<initial code>>]] consists of
+control sequences that must be defined before 
+options are either declared or executed.
+%%
+<<initial code>>=
+\RequirePackage{calc}
+@
+
+
+Most code is set in an environment in which [[\setupcode]] has been executed.
+In this environment, only [[\]], [[{]], and [[}]] have their usual
+categories; every other character represents itself.
+Appropriate [[\chardef]]s ensure that the special characters can be
+escaped with a backslash.
+<<knoweb.sty>>=
+\chardef\other=12
+\newcommand{\setupcode}{%
+  \chardef\\=`\\
+  \chardef\{=`\{
+  \chardef\}=`\}
+  \catcode`\$=\other
+  \catcode`\&=\other
+  \catcode`\#=\other
+  \catcode`\%=\other
+  \catcode`\~=\other
+  \catcode`\_=\other
+  \catcode`\^=\other
+  \catcode`\"=\other %|fixes problem with \file{german.sty}
+  \obeyspaces\Tt
+}
+@ %def \setupcode
+
+
+[[\nwendquote]] is called after quoted code.
+It resets the spacefactor.
+There is no corresponding [[\nwbeginquote]].
+<<knoweb.sty>>=
+\newcommand{\nwendquote}{\relax\ifhmode\spacefactor=\@m \fi}
+@ %def \nwendquote
+
+
+[[\eatline]] is used to consume newlines that should be ignored,
+for example, the newlines at the end of \lit{[[@ %def ]]\synt{identifiers}}lines.
+It is inserted by \noweave.
+%%
+<<knoweb.sty>>=
+\newcommand\eatline[1]{}
+{\catcode`\^^M=\active
+  \gdef\eatline#1^^M{\relax}}
+@ %def \eatline
+
+[[\nwnewline]] is inserted by \noweave in multiline code 
+(multiple lines enclosed by \lit{@[[} and \lit{]]})
+in a documentation chunk.  
+%%
+<<knoweb.sty>>=
+\newcommand{\nwnewline}{\ifvmode\else\hfil\break\leavevmode\hbox{}\fi}
+@ %def \nwnewline
+
+Within a code environment, it may be necessary to restore the 
+category codes in order to set a module (chunk) name.
+This hack doesn't properly restore [["]] for use in {\tt german.sty}.
+<<knoweb.sty>>=
+\newcommand{\setupmodname}{%
+  \catcode`\$=3
+  \catcode`\&=4
+  \catcode`\#=6
+  \catcode`\%=14
+  \catcode`\~=13
+  \catcode`\_=8
+  \catcode`\^=7
+  \catcode`\ =10
+  \catcode`\^^M=5
+  \let\{=\nwlbrace
+  \let\}=\nwrbrace
+  %|bad news --- don't know what catcode to give \texttt{"}
+  \Rm}
+@
+
+@
+Let active space equal to control space.
+The assignment is moved to the beginning of the document
+so that it does not interfer with the \texttt{verbatim} package.
+See~\cite[p.~381]{Knuth:TB84}.
+%%
+<<knoweb.sty>>=
+{\obeyspaces\AtBeginDocument{\global\let =\ }}
+@ 
+
+
+
+\subsection{Chunk Names}
+\label{sec:chunk-names}
+
+
+
+\noweave brackets uses of chunk names with [[\LA]] and [[\RA]], which
+handle the angle brackets, font, and environment.
+%%
+<<knoweb.sty>>=
+\newcommand{\LA}{\begingroup\nw@chunknamebox\bgroup\setupmodname\It$\langle$}
+\newcommand{\RA}{\/$\rangle$\egroup\endgroup}
+@ %def \LA \RA
+
+[[\nw@equivbox]] and [[\nw@plusequivbox]] are used to set the
+{\makeatletter\lit{\unhcopy\nw@equivbox} and \lit{\unhcopy\nw@plusequivbox}}
+that open a chunk definition or its continuation.
+<<knoweb.sty>>=
+\newsavebox{\nw@equivbox}
+\savebox{\nw@equivbox}{$\equiv$}
+\newsavebox{\nw@plusequivbox}
+\savebox{\nw@plusequivbox}{$\mathord{+}\mathord{\equiv}$}
+@ %def \nw@equivbox \nw@plusequivbox
+
+\noweave brackets definitions of chunk names with [[\moddef]] and
+either [[\endmoddef]] or [[\plusendmoddef]].
+
+<<knoweb.sty>>=
+\newenvironment{moddef}
+{\leavevmode
+ \kern-\nwcodeindent
+ \LA
+}
+{\RA
+ \ifmmode\equiv
+ \else\unhcopy\nw@equivbox
+ \fi
+}
+\newcommand{\plusendmoddef}{%
+  \RA
+  \ifmmode\mathord{+}\mathord{\equiv}
+  \else\unhcopy\nw@plusequivbox
+  \fi
+}
+@ %def moddef \plusendmoddef
+
+
+By default, chunk names may be broken across lines.
+Declare an option for changing this.
+%%
+<<declaration of options>>=
+\DeclareOption{donotbreakchunknames}
+  {\let\nw@chunknamebox=\mbox}
+@ %def donotbreakchunknames \nw@chunknamebox
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B donotbreakchunknames
+Prevents breaking chunk names, in the documentation, across lines.
+The default permits such breaks.
+Chunk names in the code are never broken.
+@
+
+Allocate [[\nw@chunknamebox]] and assign its default
+so that chunk names may be broken across lines.
+%%
+<<initial code>>=
+\newcommand{\nw@chunknamebox}{}
+\let\nw@chunknamebox=\relax
+@
+
+
+\subsection{Margin Tags}
+\label{sec:margin-tags}
+
+
+Within a code environment, margin tags are used to mark sub-page
+numbers in the margins, separated by [[\marginparsep]].\footnote{%
+  This package originally used [[\nwmarginglue]] to set the spacing
+  between the tag and the text.  With the addition of [[twocolumn]]
+  option, which uses [[\marginpar]] to typeset the tags,
+  it was simpler to use [[\marginparsep]].}
+The margin tag normally goes in the left column, 
+adjacent to the chunk definition; however,
+if [[twocolumn]] mode is used, 
+the margin tag for a definition in the second column 
+is put into the right margin.  
+A long chunk name may cause the cross-references to interfere
+with this margin tag.
+%%
+<<declaration of options>>=
+\DeclareOption{nomargintag}{\let\nwmargintag=\@gobble}
+\DeclareOption{margintag}{%
+  \newcommand{\nwmargintag}[1]{%
+    \leavevmode
+    \kern-\nwcodeindent
+    \llap{#1\kern\marginparsep}%
+    \kern\nwcodeindent}}
+@ %def margintag nomargintag \nwmargintag
+
+<<declaration of options>>=
+\DeclareOption{twocolumn}{%
+  \def\nwmargintag{\leavevmode\marginpar}}
+@ %def twocolumn
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B twocolumn
+When in two-column mode 
+puts margin tags for code in the appropiate margin.
+The option is normally applied to the \fB\\documentclass\fP command; 
+\fILaTeX\fP's option handling automatically 
+passes it to \fBknoweb\fP.
+@
+
+<<execution of options>>=
+\ExecuteOptions{margintag}
+@
+
+<<knoweb.sty>>=
+\if@twocolumn\RequirePackage{mparhack}\fi
+@ 
+
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B margintag, nomargintag
+Choose whether to put the chunk designator (tag) for each chunk into the margin.
+The default is \fBmargintag\fP.
+@
+[[\nwtagstyle]] determines the style in which tags are displayed.\stylehook
+<<knoweb.sty>>=
+\newcommand{\nwtagstyle}{\footnotesize\Rm}
+@ %def \nwtagstyle
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwtagstyle
+Control sequence that sets the font in which tags are displayed.
+The default is \fB\\footnotesize\\Rm\fP.
+
+Use \fB\\renewcommand{\\nwtagstyle}{\fInew-definition\fB}\fR
+to reassign it.
+@
+
+
+@ 
+We have to be careful with font-changing in the presence of
+different font-selection schemes.  In the \LaTeX{} New Font Selection
+Scheme something like [[\it\tt]] will attempt to use an italic
+typewriter font.  Thus we define new commands like [[\Tt]] which will
+work with both the Plain and old and new \LaTeX{} schemes.  
+A problem with these definitions arises with NFSS:  
+in math mode they do not work
+unless the {\tt oldlfont} backwards-compatibility option is in effect.
+For the moment, you can get round this by using [[\mbox]].
+
+If you wanted code set in a different font, you could re-define
+[[\Tt]].\stylehook{}  [\LaTeX2e actually behaves like OFSS, but the
+extra [[\reset@font]] does no harm.]
+<<knoweb.sty>>=
+%|here is support for the new-style (capitalized) font-changing commands
+%|thanks to Dave Love
+\newcommand{\Rm}{\normalfont\rm}
+\newcommand{\It}{\normalfont\it}
+\newcommand{\Tt}{\normalfont\tt}
+\newcommand{\Bf}{\normalfont\bf}
+@ %def \Rm \It \Tt \Bf
+
+
+\subsection{Adjusting Placement of Code on the Page}
+
+<<knoweb.sty>>=
+\newlength{\nwcodeindent}
+\setlength{\nwcodeindent}{10pt}
+@ %def \nwcodeindent
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwcodeindent
+Length parameter that sets the indentation of the code.
+The default is \fB10pt\fP.
+
+Use \fB\\setlength{\\nwcodeindent}{\fInew-value\fB}\fR to reassign it.
+@
+
+
+@
+[[\noweboptions{shift}]] is used to shift the whole page left to make room for
+wide code lines.  It may be emitted by [[noweave -shift]], or it might be given by a user.
+\comment{JR: The original code only shifted even-numbered (verso) pages when two-sided 
+printing was in effect.  I see no reason for that, so this implementation 
+always shifts both even and odd pages.}
+%%
+<<declaration of options>>=
+\DeclareOption{shift}{%
+  \setlength{\dimen@}{-0.8in}
+  \addtolength{\evensidemargin}{\dimen@}
+  \addtolength{\oddsidemargin}{\dimen@}
+}
+\DeclareOption{noshift}{\relax}
+@ %def shift noshift
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B shift
+Shift text to the left so that long code lines do not extend
+off the right-hand side of the page.
+@
+\subsection{Page-breaking strategy}
+\label{sec:pagebreaking}
+
+We want to insert penalties aiming for:
+\begin{enumerate}
+\item 
+No page breaks in the middle of a code chunk unless necessary to avoid
+an overfull vbox;
+\item 
+Documentation immediately preceding a code chunk should appear on
+the same page as that code chunk unless doing so would violate rule 1.
+\end{enumerate}
+[[\filbreak]] is useful for this sort of thing (see {\em The \TeX
+  book\/}) and is used to encourage breaks at the right places between
+chunks.  Appropriate penalties are inserted elsewhere, between code
+lines in particular.
+
+\subsection{Environments for Setting Code}
+
+[[\nwbegincode]] and [[\nwendcode]] are used by \noweave to bracket
+code chunks.
+The [[webcode]] environment is intended for users who want to paste
+\noweave output into papers.
+
+The definition of [[\nwbegincode]] is based on the verbatim
+implementation in \file{verbatim.sty}.
+%%
+<<initial code>>=
+\newcommand{\nwbegincode}[1]{%
+  \begingroup
+  <<[[\nwbegincode]] separation and penalties>>
+  \@begincode }
+\newcommand{\nwendcode}{%
+  \endtrivlist \endgroup \filbreak}%| keeps code on 1 page
+\newenvironment{webcode}{%
+  \@begincode
+}{%
+  \endtrivlist}
+@ %def \nwbegincode \nwendcode webcode
+@
+<<manpage: environments>>=
+.TP
+.B webcode
+Typesets \fInoweave\fP code chunks.
+With the exception of initial vertical spacing
+it is identical to \fB\\nwbegincode ... \\nwendcode\fP,
+which \fInoweave\fP inserts to typeset code chunks.
+@
+
+
+This is just common code between [[\nwbegincode]] and [[webcode]].
+<<knoweb.sty>>=
+\def\@begincode{%
+  <<[[\trivlist]] clich\'e (\`a la {\Tt verbatim})>>
+  <<[[\obeylines]] setup>>
+  <<zap ligatures, fix spaces>>
+  \nowebsize 
+  \setupcode
+  \let\nw@chunknamebox=\mbox}
+@
+
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B tinycode, scriptsizecode, ..., normalsizecode, ..., Hugecode
+Set code in \fILaTeX\fP \fB\\tiny\fP font, etc.
+Defaults to \fBnormalsizecode\fP.
+@
+
+
+
+\subsubsection{Code Font Size}
+\label{sec:code-font-size}
+
+ 
+The command [[\nowebsize]] governs the size at which code is set.
+Slitex users might try
+\begin{quote}
+  [[\newcommand{\nowebsize}{\normalsize\baselineskip=20pt \parskip=5pt }]]
+\end{quote}
+to avoid code lines that are too far apart.
+<<declaration of options>>=
+\DeclareOption{tinycode}{\let\nowebsize=\tiny}
+\DeclareOption{footnotesizecode}{\let\nowebsize=\footnotesize}
+\DeclareOption{scriptsizecode}{\let\nowebsize=\scriptsize}
+\DeclareOption{smallcode}{\let\nowebsize=\small}
+\DeclareOption{normalsizecode}{\let\nowebsize=\normalsize}
+\DeclareOption{largecode}{\let\nowebsize=\large}
+\DeclareOption{Largecode}{\let\nowebsize=\Large}
+\DeclareOption{LARGEcode}{\let\nowebsize=\LARGE}
+\DeclareOption{hugecode}{\let\nowebsize=\huge}
+\DeclareOption{Hugecode}{\let\nowebsize=\Huge}
+@ %def tinycode footnotesizecode scriptsizecode smallcode normalsizecode
+@ %def largecode Largecode LARGEcode hugecode Hugecode
+
+<<execution of options>>=
+\ExecuteOptions{normalsizecode}
+@
+
+
+
+\subsubsection{Vertical Spacing}
+\label{sec:vertical-spacing}
+
+
+
+[[\nwcodetopsep]] is the glue placed before code chunks.
+%%
+<<knoweb.sty>>=
+\newlength{\nwcodetopsep}
+\setlength{\nwcodetopsep}{3pt plus 1.2pt minus 1pt}
+@ %def \nwcodetopsep
+@
+<<manpage: style hooks>>=
+.TP 
+.B \\\\nwcodetopsep
+Length parameter (glue) that sets the vertical space placed before code chunks.
+The default is \fB3pt plus 1.2pt minus 1pt\fP.
+
+Use \fB\\setlength{\\nwcodetopsep}{\fInew-value\fB}\fR to reassign it.
+@
+
+
+<<[[\nwbegincode]] separation and penalties>>=
+\setlength{\topsep}{\nwcodetopsep}
+\@beginparpenalty=\@highpenalty
+\@endparpenalty=-\@highpenalty
+@ %def \@beginparpenalty \@endparpenalty
+
+
+The [[\trivlist]] clich\'e isn't quite a clich\'e because we adjust
+[[\leftskip]] for indentation by [[\nwcodeindent]].
+%%
+<<[[\trivlist]] clich\'e (\`a la {\Tt verbatim})>>=
+\trivlist \item[]%
+\setlength{\leftskip}{\@totalleftmargin+\nwcodeindent}%
+\setlength{\rightskip}{\z@}%
+\parskip\z@ \parindent\z@ \parfillskip\@flushglue
+@ The penalty inserted between verbatim lines would normally be
+[[\interlinepenalty]], but we want to prohibit breaks there.
+@
+Note the bug lurking somewhere in this code, as reported by Steven Ooms:
+\begin{quote}
+I have some lay-out
+problems in the documentation chunks.  When using the (La)TeX commands
+[[\hline]] or [[\vtop]] the right margin is always extended far beyond the page
+margin after the first code chunk has been typeset.  I'm still looking for
+the exact cause of it, but to me it seems that LaTeX supposes for those
+commands that the line width for the documentation chunk is as large as that
+for code chunks, which isn't true in reality.
+\end{quote}
+@
+<<[[\obeylines]] setup>>=
+\@@par
+\def\par{\leavevmode\null \@@par \penalty\nwcodepenalty}%
+\obeylines
+@ [[\nwcodepenalty]] is the penalty for breaking between lines in a
+code chunk.  If you set it to 10000, code will never be broken across
+pages.\stylehook{}  I guess this should be settable in [[\noweboptions]].
+<<knoweb.sty>>=
+\newcount\nwcodepenalty  \nwcodepenalty=\@highpenalty
+@ %def \nwcodepenalty
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwcodepenalty
+Counter that sets the penalty for page breaking between lines of a code chunk.
+The default is \fB\\@highpenalty\fP.
+
+Use \fB\\nwcodepenalty=\fInew-value\fR to reassign it.
+@
+
+
+
+
+The cursing-chunk accounts for the addition of a mess of characters
+to those reset by [[\@noligs]] in \LaTeX2e.
+%
+<<zap ligatures, fix spaces>>=
+\@noligs <<make all those damn active characters ``other''>>
+\setupcode \frenchspacing \@vobeyspaces
+@
+We cannot make the backquote, \lit{`}, [[\other]] because then we get ligatures.
+Why Knuth put these ligatures in the [[tt]] font I wish I knew.
+But we step on all the others.
+%%
+<<make all those damn active characters ``other''>>=
+\ifx\verbatim@nolig@list\undefined\else
+  \let\do=\nw@makeother \verbatim@nolig@list \do@noligs\`
+\fi
+<<knoweb.sty>>=
+\def\nw@makeother#1{\catcode`#1=12 }
+@ %def \nw@makeother
+
+
+\noweave uses [[\nwbegindocs{nnn}]] and [[\nwenddocs]] to bracket
+documentation chunks.
+If a documentation chunk does not continue the current paragraph, 
+\noweave inserts [[\nwdocspar]], 
+which uses [[\filbreak]] in an attempt to keep the documentation chunk 
+on the same page as the code chunk that follows it.  
+(The code chunk will have another [[\filbreak]] after it---see [[\nwbegincode]].)
+[[\nwbegindocs]] does not start a new paragraph if the previous chunk did not end one,
+i.e.\ did not cause \TeX{} to entervmode; 
+if it does start a new paragraph, it is only indented by the use of [[\nwdocspar]].
+%%
+<<initial code>>=
+\newcommand{\nwbegindocs}[1]{\ifvmode\noindent\fi}
+\newcommand{\nwenddocs}{\relax}
+\newcommand{\nwdocspar}{}
+\let\nwdocspar=\filbreak
+@ %def \nwbegindocs \nwenddocs \nwdocspar
+
+
+\subsubsection{Code Breaking}
+\label{sec:code-breaking}
+
+
+
+Some people do not like the vertical white space that \noweb leaves 
+at the bottom of pages.  
+The style option [[breakcode]] permits breaking code to use less white space.
+The parameter [[\nwbreakcodespace]] controls the amount of white space left.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@semifilbreak[1]{%
+  \vskip0pt plus#1
+  \penalty-200
+  \vskip0pt plus -#1}
+\newlength{\nwbreakcodespace}
+\setlength{\nwbreakcodespace}{0.2in}
+@ %def \nw@semifilbreak \nwbreakcodespace
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwbreakcodespace
+Length parameter used with the package option \fBbreakcode\fP
+to control the amount of vertical space left on a page when a code chunk is broken.
+The default is \fB0.2in\fP.
+
+Use \fB\\setlength{\\nwebreakcodespace}{\fInew-value\fB}\fR
+to reassign it.
+@
+
+
+<<declaration of options>>=
+\DeclareOption{breakcode}{%
+  \renewcommand{\nwdocspar}{\nw@semifilbreak{0.2in}}%
+  \renewcommand{\nwendcode}{\endtrivlist\endgroup}%
+}
+@ %def breakcode
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B breakcode
+Permit breaking code to use less vertical white space.
+The parameter \fB\\nwbreakcodespace\fP controls 
+the amount of white space that may be left on a page.
+@
+
+The page-breaking strategy implies ragged bottom pages, so we should
+turn it on in general (this is relevant for the {\tt report} style):
+<<knoweb.sty>>=
+\raggedbottom
+@
+
+\noweave doesn't bracket quoted code with [[\code]] and [[\edoc]] any more.
+It probably should do something nifty, just to make {\TeX} hackers happy, but it doesn't.
+<<knoweb.sty>>=
+\newcommand{\code}{%
+  \leavevmode
+  \begingroup
+    \setupcode
+    \@vobeyspaces
+    \obeylines}
+\newcommand{\edoc}{%
+  \endgroup}
+@ %def \code \edoc
+
+
+\subsection{Comments in Code}
+\label{sec:comments-code}
+
+By default, comments in a code chunk are typeset in the same font as the code,
+a fixed-width typewriter font.
+There are applications where it is useful to typeset comments in code;
+to do this effectively, a \noweb filter must be used to identify
+the comments to be typeset and insert the appropriate markup.
+%%
+This section assigns a \LaTeX{} environment and commands that can be used
+by such a filter.
+
+@
+Assign an environment, [[nwtypesetcomment]] that can be used to typeset a comment
+in a code chunk.  
+Redefine [[\par]] to call [[\nw@commentpar]].
+Call [[\nwtypesetcommentfont]] to set the font; this can be customized by the user.
+Reassign the category codes of most of the special characters
+so that they behave as usual.
+
+<<knoweb.sty>>=
+\newenvironment{nwtypesetcomment}
+{\def\par{\nw@commentpar}%
+ \nwtypesetcommentfont
+ \catcode`\$=3
+ \catcode`\&=4
+ \catcode`\^^M=5
+ \catcode`\#=6
+ \catcode`\^=7
+ \catcode`\_=8
+ \catcode`\ =10
+ \catcode`\^^I=10
+ \catcode`\~=13
+ \catcode`\%=14
+ \let\{=\nwlbrace
+ \let\}=\nwrbrace
+ \let\\=\nwbackslash
+}
+{}
+@ %def nwtypesetcomment
+
+@
+Assign a command that sets the font used in an inline comment.
+The default assignment is to use the roman family.
+%%
+<<knoweb.sty>>=
+\newcommand{\nwtypesetcommentfont}{\rmfamily}
+@ %def \nwtypesetcommentfont
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwtypesetcommentfont
+Control sequence that assigns the font used for typesetting
+comments in code chunks; it is used with the \fInoweave\fP
+filters \fBinlinecomments\fP and \fBmultilinecomments\fP.
+The default is \fB\\rmfamily\fP.
+
+Use \fB\\renewcommand{\\nwtypsetcommentfont}{\fInew-definition\fP}\fR
+to reassign it.
+@
+
+
+@
+%%
+<<knoweb.sty>>=
+\newcommand{\nw@commentpar}{}
+\let\nw@commentpar=\par
+@ %def \nw@commentpar
+
+
+
+
+
+
+
+\subsection{The \noweb{} Page Style}
+
+Headers contain file name, date, and page number.
+\noweave emits [[\nwfilename{]]{\em name}[[}]] for each new file.
+In the {\tt noweb} page style, new files cause page breaks;
+otherwise they are ignored.
+<<knoweb.sty>>=
+\newlength{\@original@textwidth}
+\newcommand{\ps@noweb}{%
+  \setlength{\@original@textwidth}{\textwidth}%
+  \let\@mkboth=\@gobbletwo
+  \let\@oddfoot=\relax
+  \let\@evenfoot=\relax
+  \if@twoside
+    \def\@evenhead{\makebox[\@original@textwidth]{%
+        \Rm \makebox[5ex][l]{\thepage}{\Tt\leftmark}\hfill\today}}%
+    \def\@oddhead{\makebox[\@original@textwidth]{%
+        \Rm \today\hfill{\Tt\leftmark}\makebox[5ex][r]{\thepage}}}%
+  \else
+    \def\@oddhead{\makebox[\@original@textwidth]{% 
+        \Rm \today\hfill{\Tt\leftmark}\makebox[5ex][r]{\thepage}}}%
+    \let\@evenhead=\@oddhead
+  \fi
+  \let\chaptermark=\@gobble
+  \let\sectionmark=\@gobble
+  \let\subsectionmark=\@gobble
+  \let\subsubsectionmark=\@gobble
+  \let\paragraphmark=\@gobble
+  \let\subparagraphmark=\@gobble
+  \def\nwfilename{%
+    \begingroup
+      \let\do\@makeother\dospecials
+      \catcode`\{=1 
+      \catcode`\}=2 
+      \nw@filename}%
+  \def\nw@filename##1{%
+    \endgroup
+    \markboth{##1}{##1}%
+    \let\nw@filename=\nw@laterfilename}%
+}
+\def\nw@laterfilename#1{\endgroup\clearpage\markboth{#1}{#1}}
+\let\nwfilename=\@gobble
+@ %def \ps@noweb \nwfilename \nw@laterfilename 
+<<manpage: commands>>=
+.TP
+.B \\\\pagestyle{noweb}
+Assign the \fBnoweb\fP pagestyle.
+Page headers consist of the filename, date, and page number.
+Page footers are blank.
+@
+
+
+\subsection{Chunk Cross-Reference}
+
+The macros
+  [[\nwalsodefined]], [[\nwused]], and [[\nwnotused]] 
+are emitted by the \noweb cross-referencers.
+If unused chunks are output chunks, a filter can slip in
+[[\let\nwnotused=\nwoutput]].
+The style uses [[\nwcodecomment]] for all annotations that follow code chunks.
+Fiddling with it can change the appearance of the output.
+Note that [[\nwcodecomment]] is used after [[\nwbegincode]], 
+with [[\obeylines]] in effect.  
+Because linebreaking can occur here, 
+we need to change the [[\interlinepenalty]].
+A little vertical space ([[\nwcodecommentsep]]) 
+appears before the first comment.
+
+We firkled with [[\rightskip]] in [[\nwbegincode]] above; 
+now we want to reset it so that paragraphs are the normal width ([[\textwidth]],
+possibly less [[\nwcodeindent]]) and set ragged right.  
+This is done as usual by making [[\rightskip]] naturally zero but stretchable.
+%%
+<<knoweb.sty>>=
+\newcommand{\nwcodecomment}[1]{%
+  \@@par\penalty\nwcodepenalty
+  <<add [[\nwcodecommentsep]] if this is the first [[\nwcodecomment]]>>%
+  \hspace{-\nwcodeindent}{%
+    \setlength{\rightskip}{\z@ plus1in}%
+    \interlinepenalty\nwcodepenalty
+    \let\\\relax\footnotesize\Rm #1\@@par\penalty\nwcodepenalty}}
+@ %def \nwcodecomment
+
+
+<<add [[\nwcodecommentsep]] if this is the first [[\nwcodecomment]]>>=
+\if@firstnwcodecomment
+  \vskip\nwcodecommentsep
+  \penalty\nwcodepenalty
+  \@firstnwcodecommentfalse
+\fi
+@
+
+
+This stuff is used at the end of a chunk by the [[longxref]] package option.
+%%
+<<initial code>>=
+\newcommand\nw@alsodefined[1]{%
+  \nwcodecomment{\nw@langdepdef\space\nw@langdepin\space\nw@chunkcommachunketc{#1}.}}
+\newcommand\nw@used[1]{%
+  \nwcodecomment{\nw@langdepcud\space\nw@langdepin\space\nw@chunkcommachunketc{#1}.}}
+\newcommand\nw@notused[1]{%
+  \nwcodecomment{\nw@langdeprtc.}}
+\newcommand\nwoutput[1]{%
+  \nwcodecomment{\nw@langdepcwf\space{\Tt\nw@stripstar#1*\stripped}.}}
+\def\nw@stripstar#1*#2\stripped{#1}
+@ %def \nw@alsodefined \nw@used \nw@notused \nwoutput \nw@stripstar
+
+
+
+\subsubsection{Macros for the Definition Line}
+
+When the [[shortxref]] package option is enabled,
+additional information, in the form of tags, is added to the definition line of a chunk.
+The \TeX{} file generated by \noweave calls, in order, the following macros
+with appropriate arguments:
+
+\begin{compactdesc}
+\item [[\nw@startdeflinemarkup]]:
+  push the tags to the right margin,
+  ensure there is a minimal space between the chunk name and the tags,
+  and begin a group in which the font style is set with [[\nwtagstyle]].
+
+\item [[\nw@usesondefline]]: 
+  prints a list, enclosed in parentheses, of tags to the chunks that use this chunk.
+  Its single argument is a list of keys, \{\bskey1\bskey2\ldots\bskey{n}\},
+  each key corresponds to the argument of a [[\sublabel]] command.
+
+\item [[\nw@prevnextdefs]]:
+  print tags to the previous and next chunks of the same name.
+
+\item [[\nw@enddeflinemarkup]]:  end the group started by [[\nw@startdeflinemarkup]].
+\end{compactdesc}
+
+
+<<initial code>>=
+\newcommand{\nw@startdeflinemarkup}{%
+  \nobreak\hskip .5em plus 1fill\nobreak\begingroup\nwtagstyle}
+\newcommand{\nw@usesondefline}[1]{(\nw@chunkspacechunketc{#1})}
+\newcommand{\nw@prevnextdefs}[2]{%
+  \ifx\relax#1\else\nobreakspace\nobreakspace\nwprevdefptr{#1}\fi
+  \ifx\relax#2\else\nobreakspace\nobreakspace\nwnextdefptr{#2}\fi}
+\newcommand{\nw@enddeflinemarkup}{\endgroup}
+@ %def \nw@startdeflinemarkup 
+@ %def \nw@usesondefline
+@ %def \nw@prevnextdefs
+@ %def \nw@enddeflinemarkup 
+
+@
+Print the tags to the left and right chunks;
+left- and right-pointing triangles are added to the tags.
+%%
+<<knoweb.sty>>=
+\newcommand{\nwprevdefptr}[1]{%
+  \mbox{$\mathord{\triangleleft}\,\mathord{\mbox{\subpageref{#1}}}$}}
+\newcommand{\nwnextdefptr}[1]{%
+  \mbox{$\mathord{\mbox{\subpageref{#1}}}\,\mathord{\triangleright}$}}
+@ %def \nwprevdefptr \nwnextdefptr
+
+
+
+\subsubsection{Package Options}
+\label{sec:package-options}
+
+Declare the package options used to select display style for chunk cross-references.
+
+The [[shortxref]] option uses symbols on the definition line.
+
+<<declaration of options>>=
+\DeclareOption{shortxref}{%
+  \let\nwalsodefined=\@gobble
+  \let\nwused=\@gobble
+  \let\nwnotused=\@gobble
+  \let\nwprevnextdefs=\nw@prevnextdefs
+  \let\nwusesondefline=\nw@usesondefline
+  \let\nwstartdeflinemarkup=\nw@startdeflinemarkup
+  \let\nwenddeflinemarkup=\nw@enddeflinemarkup
+}
+@ %def shortxref
+
+The [[longxref]] option uses small paragraphs after each chunk, as in Knuth.
+
+<<declaration of options>>=
+\DeclareOption{longxref}{%
+  \let\nwalsodefined=\nw@alsodefined
+  \let\nwused=\nw@used
+  \let\nwnotused=\nw@notused
+  \let\nwprevnextdefs=\@gobbletwo
+  \let\nwusesondefline=\@gobble
+  \let\nwstartdeflinemarkup=\relax
+  \let\nwenddeflinemarkup=\relax
+}
+@ %def longxref
+
+The [[noxref]] option uses no chunk cross-references.
+
+<<declaration of options>>=
+\DeclareOption{noxref}{%
+  \let\nwalsodefined=\@gobble
+  \let\nwused=\@gobble
+  \let\nwnotused=\@gobble
+  \let\nwprevnextdefs=\@gobbletwo
+  \let\nwusesondefline=\@gobble
+  \let\nwstartdeflinemarkup=\relax
+  \let\nwenddeflinemarkup=\relax
+}
+@ %def noxref
+
+The default is [[shortxref]]
+
+<<execution of options>>=
+\ExecuteOptions{shortxref}
+@
+
+@
+Allocate the commands.
+These are redefined by the package options.
+%%
+<<initial code>>=
+\newcommand\nwalsodefined{}
+\newcommand\nwused{}
+\newcommand\nwnotused{}
+\newcommand\nwprevnextdefs{}
+\newcommand\nwusesondefline{}
+\newcommand\nwstartdeflinemarkup{}
+\newcommand\nwenddeflinemarkup{}
+@ %def \nwalsodefined
+@ %def \nwused
+@ %def \nwnotused
+@ %def \nwprevnextdefs
+@ %def \nwusesondefline
+@ %def \nwstartdeflinemarkup
+@ %def \nwenddeflinemarkup
+
+
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B longxref, shortxref, noxref
+Choose a style for chunk cross-reference.
+Long style uses small paragraphs after each chunk, as in Knuth.
+Short style uses symbols on the definition line, as in Hanson.
+.B noxref
+provides no chunk cross-reference. 
+Defaults to 
+.B shortxref.
+@
+
+
+<<knoweb.sty>>=
+\newlength\nwcodecommentsep 
+\setlength{\nwcodecommentsep}{3pt plus 1pt minus 1pt}
+\newif\if@firstnwcodecomment\@firstnwcodecommenttrue
+@ %def \nwcodecommentsep 
+@ %def \if@firstnwcodecomment \@firstnwcodecommenttrue \@firstnwcodecommentfalse
+@
+<<manpage: style hooks>>=
+.TP
+.B \\\\nwcodecommentsep
+Length parameter that sets the vertical separation
+between the end of a code chunk and any following annotation.
+The default is \fB3pt plus 1pt minus 1pt\fP.
+
+Use \fB\\setlength{\\nwcodecommentsep}{\fInew-value\fB}\fR
+to reassign it.
+@
+
+
+
+
+\subsection{Page Ranges}
+
+
+The goal is to combine sub-page numbers in a way that makes sense.
+Multiple sub-pages of one page become that page, and individual
+pages are combined into ranges.
+(A range may be only one page.)
+
+\begin{harangue}
+  Does this, indeed, make sense?
+  More to the point, is it useful?
+  For source code with several chunks per page (such as this),
+  a range of pages is too imprecise; better to 
+  list just the chunks that contain the referenced item.
+  This can be achieved by using the [[webnumbering]] option;
+  however, it would be useful to have this capability in
+  the [[alphasubpage]] and [[numsubpage]] options.
+\end{harangue}  
+
+
+@
+Given a list of keys,
+
+  \bskey1\bskey2$\cdots$\bskey{n},
+
+\noindent
+convert the keys to ranges and then 
+
+%insert ``chunks \alabel1, \alabel2, and \alabel3'',
+%using the appropriate number, conjunction, and language.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@chunkcommachunketc[1]{%|\param{list of keys}
+  <<initialize [[\nw@pages]] and [[\nw@pagecount]]>>
+  \def\\##1{\nw@firstpagel{##1}%
+            \let\\=\nw@nextpagel}%
+  #1%
+  <<append range to range list>>%
+  <<insert ``chunk(s)''>>
+  \def\\##1{\nw@hyperpagenum##1}%
+  \nw@commafy{\nw@pages}}
+@ %def \nw@chunkcommachunketc
+
+
+<<initialize [[\nw@pages]] and [[\nw@pagecount]]>>=
+\gdef\nw@pages{}%
+\nw@pagecount=\z@
+@
+
+<<insert ``chunk(s)''>>=
+\ifnum\nw@pagecount=\@ne 
+  \nw@langdepchk
+\else 
+  \nw@langdepchks
+\fi
+\nobreakspace
+@
+
+
+
+This is similar to [[\nw@chunkcommachunketc]],
+however, 
+%%
+<<knoweb.sty>>=
+\newcommand{\subpages}[1]{%|\param{list of \synt{subpage}\synt{page}}
+  <<initialize [[\nw@pages]] and [[\nw@pagecount]]>>
+  \def\\##1{\edef\@tempa{\noexpand\nw@firstpage##1{}}\@tempa
+            \def\\####1{\edef\@tempa{\noexpand\nw@nextpage####1}\@tempa}}%
+  #1%
+  <<append range to range list>>%
+  <<insert ``chunk(s)''>>
+  \def\\##1{\@firstoftwo##1}%
+  \nw@commafy{\nw@pages}}
+@ %def \subpages
+
+
+
+<<knoweb.sty>>=
+\newcount\nw@lopage %| lo
+\newcount\nw@hipage %| hi
+\newcount\nw@losub  %| subpage of lo
+\newcount\nw@hisub  %| subpage of hi
+@ %def \nw@lopage \nw@hipage \nw@losub \nw@hisub
+@
+Insert nothing.
+Assign the counters [[\nw@lopage]] and [[\nw@losub]].
+Assign [[\nw@hipage]] to be one greater than [[\nw@lopage]].
+Increment [[\nw@pagecount]].
+%%
+<<knoweb.sty>>=
+\newcommand\nw@firstpage[3]{%|\param{subpage} \param{page} \param{key}
+  \nw@lopage=#2 \nw@losub=#1
+  \def\nw@loxreftag{#3}%
+  \advance\nw@pagecount by \@ne
+  <<$\mbox{[[\nw@hipage]]} \gets \mbox{[[\nw@lopage]]}+1$>>
+}
+@ %def \nw@firstpage \nw@loxreftag
+
+
+
+Insert nothing.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@nextpage[3]{%|\param{subpage} \param{page} \param{key}
+  \ifnum\nw@hipage=#2 
+    \advance\nw@hipage by \@ne 
+    \advance\nw@pagecount by \@ne
+    \nw@hisub=#1 
+    \def\nw@hixreftag{#3}%
+  \else
+    \ifnum#2<\nw@lopage 
+      <<new range starting with [[#2]]>>%
+    \else
+      \ifnum#2>\nw@hipage 
+        <<new range starting with [[#2]]>>%
+      \else
+        \nw@losub=\z@ \nw@hisub=\z@
+  \fi\fi\fi
+}
+@ %def \nw@nextpage \nw@hixreftag
+
+<<new range starting with [[#2]]>>=
+<<append range to range list>>
+\nw@firstpage{#1}{#2}{#3}
+@
+
+<<$\mbox{[[\nw@hipage]]} \gets \mbox{[[\nw@lopage]]}+1$>>=
+\nw@hipage=\nw@lopage\advance\nw@hipage by\@ne 
+@
+
+
+<<$\mbox{[[\count@]]} \gets \mbox{[[\nw@hipage]]}-1$>>=
+\count@=\nw@hipage\advance\count@ by\m@ne
+@
+
+
+Append a chunk range to [[\nw@pages]].
+With [[\nw@pages]] equal to 
+
+\bss\{\range{1}\}\{\akey{1}\}$\cdots$\bss\{\range{n}\}\{\akey{n}\},
+
+\noindent
+the result is
+
+\bss\{\range{1}\}\{\akey{1}\}$\cdots$\bss\{\range{n}\}\{\akey{n}\}%
+\bss\{\range{n+1}\}\{\akey{n+1}\}.
+
+
+
+<<append range to range list>>=
+<<set [[\@tempa]] to page range(s), marked with [[\\]]>>
+\edef\@tempa{\noexpand\nw@ixappend\noexpand\nw@pages{\@tempa}}%
+\@tempa
+@
+
+
+Assign [[\@tempa]] to one of
+\begin{compactenum}[(a)]
+\item \bss\{\chunkid{}\}\{\akey{}\},
+\item \bss\{\chunkid{1}\}\{\akey{1}\}\bss\{\chunkid{2}\}\{\akey{2}\},
+\item \bss\{\chunkid{1}--\chunkid{2}\}\{\}.
+\end{compactenum}
+%%
+<<set [[\@tempa]] to page range(s), marked with [[\\]]>>=
+\advance\nw@hipage by \m@ne
+<<[[\count@]] $\gets$ [[\nw@hipage]] $-$ [[\nw@lopage]]>>
+\ifcase\count@%|same page
+  \edef\@tempa{%
+    \noexpand\noexpand\noexpand\\%
+    {{\nwthepagenum{\number\nw@losub}{\number\nw@lopage}}%
+     {\nw@loxreftag}}}%
+\or%|next page
+  \edef\@tempa{%
+    \noexpand\noexpand\noexpand\\%
+    {{\nwthepagenum{\number\nw@losub}{\number\nw@lopage}}
+     {\nw@loxreftag}}%
+    \noexpand\noexpand\noexpand\\%
+    {{\nwthepagenum{\number\nw@hisub}{\number\nw@hipage}}
+     {\nw@hixreftag}}}%
+\else
+  <<use simple rules from Chicago style manual>>%
+\fi
+@
+
+<<[[\count@]] $\gets$ [[\nw@hipage]] $-$ [[\nw@lopage]]>>=
+\count@=\nw@hipage
+\advance\count@ by-\nw@lopage
+@
+
+
+The Chicago Manual of Style~\cite[\S8.69--70]{Chicago:CMS93}
+specifies two systems for abbreviating inclusive numbers.
+The original version of this package, \file{noweb.sty},
+used a modified version of the first system.
+Here we implement the second (simpler) system.
+From the manual: 
+``the second number of the range includes only the changed part
+of the first number:
+
+\begin{center}
+  \begin{tabular}{llll}
+    3--10   & 600--13  & 1002--6  & 1496--504 \\
+    71--2   & 1100--23 & 321--5   & 14325--8  \\
+    96--117 & 107--8   & 415--532 & 11564--78 \\
+    100--4  & 505--17  & 1536--42 & 13729--803''
+  \end{tabular}
+\end{center}
+
+@
+\nextchunklabel{chicago}
+Modify [[\nw@hipage]] to correspond to the Chicago style manual,
+then set [[\@tempa]] accordingly.
+%%
+<<use simple rules from Chicago style manual>>=
+<<chicago: $\ell\gets$ [[\nw@lopage]], $h\gets$ [[\nw@hipage]], $10^k \gets 1$>>
+<<chicago: find $10^k$ such that $\lfloor\ell/10^k\rfloor = \lfloor h/10^k\rfloor$>>
+<<chicago: [[\nw@hipage]] $\gets h - \lfloor h/10^k\rfloor\,10^k$>>
+<<define [[\@tempa]] to be \{[[\nw@lopage]]--[[\nw@hipage]]\}\{\}>>
+@
+
+<<chicago: $\ell\gets$ [[\nw@lopage]], $h\gets$ [[\nw@hipage]], $10^k \gets 1$>>=
+\nw@lo=\nw@lopage
+\nw@hi=\nw@hipage
+\nw@pwrten=\@ne
+<<chicago: find $10^k$ such that $\lfloor\ell/10^k\rfloor = \lfloor h/10^k\rfloor$>>=
+\loop
+  \divide\nw@lo by10
+  \divide\nw@hi by10
+  \multiply\nw@pwrten by10
+  \ifnum\nw@lo=\nw@hi%|exit loop
+  \else
+\repeat
+<<chicago: [[\nw@hipage]] $\gets h - \lfloor h/10^k\rfloor\,10^k$>>=
+\multiply\nw@hi by\nw@pwrten
+\advance\nw@hipage by-\nw@hi
+@
+
+
+
+
+Allocate counters for computing page ranges.
+Initialize [[\nw@pwrten]] to one,
+which is its value when entering the group in chunk~\subpageref{chicago}.
+%%
+<<knoweb.sty>>=
+\newcount\nw@lo
+\newcount\nw@hi
+\newcount\nw@pwrten
+@ %def \nw@lo \nw@hi \nw@pwrten
+
+
+<<define [[\@tempa]] to be \{[[\nw@lopage]]--[[\nw@hipage]]\}\{\}>>=
+\edef\@tempa{%
+  \noexpand\noexpand\noexpand\\%
+     {{\number\nw@lopage--\number\nw@hipage}%
+      {}}}
+@
+
+<<knoweb.sty>>=
+\newcount\nw@pagetemp
+@ %def \nw@pagetemp
+
+@
+Assign the macro [[\@tempa]] 
+%%
+<<knoweb.sty>>=
+\newcommand\nw@firstpagel[1]{%|\akey{}
+  \@ifundefined{r@#1}
+    {<<warn of undefined reference to [[#1]] and add page ??>>}
+    {\edef\@tempa{\noexpand\nw@firstpage\subpagepair{#1}{#1}}%
+     \@tempa}}
+\newcount\nw@pagecount
+@ %def \nw@pagecount \nw@firstpagel
+
+This is identical to [[\nw@firstpagel]] 
+except that it calls [[\nw@nextpage]] rather than [[\nw@firstpage]].
+%%
+<<knoweb.sty>>=
+\newcommand\nw@nextpagel[1]{%|\akey{}
+  \@ifundefined{r@#1}
+   {<<warn of undefined reference to [[#1]] and add page ??>>}
+   {\edef\@tempa{\noexpand\nw@nextpage\subpagepair{#1}{#1}}%
+    \@tempa}}
+@ %def \nw@nextpagel
+
+
+Print \synt{identifier} and make it an active hyperlink to \synt{link}.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@hyperpagenum[2]{%|\param{identifier}\param{link}
+  \nwhyperreference{#2}{#1}}
+@ %def \nw@hyperpagenum
+
+
+
+Given a list of keys, return the corresponding list of chunk identifiers, separated by spaces.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@chunkspacechunketc[1]{%|\{\bskey1$\cdots$\bskey{n}\}
+  <<initialize [[\nw@pages]] and [[\nw@pagecount]]>>
+  \def\\##1{\nw@firstpagel{##1}\let\\=\nw@nextpagel}%
+  #1%
+  <<append range to range list>>
+  \def\\##1{\nw@hyperpagenum##1\let\\=\nw@pagenumslrest}%
+  \nw@pages}
+\newcommand\nw@pagenumslrest[1]{\nobreakspace\nw@hyperpagenum#1}
+@ %def \nw@chunkspacechunketc \nw@pagenumslrest
+
+
+\comment{Allocate a command used to record a list of something.}
+%%
+<<initial code>>=
+\newcommand{\nw@pages}{}
+@ %def \nw@pages
+
+
+<<warn of undefined reference to [[#1]] and add page ??>>=
+<<warn of undefined reference to [[#1]]>>%
+\nw@ixappend\nw@pages{\\{\bf ??}}
+@
+
+<<warn of undefined reference to [[#1]]>>=
+\@warning{Reference `#1' on page \thepage{} undefined}
+@
+
+\subsection{Sub-page References}
+
+This is the wonderful code that Dave Love provided to make page
+references like 7a, 7b, and so on.
+
+This code
+provides a mechanism for defining `page sub-references' 
+using [[\sublabel{foo}]] referenced with [[\subpageref{foo}]].  
+Sub-references will be numbered like
+\subpageref{ref:foo}, \subpageref{ref:bar}, \subpageref{ref:baz}
+\sublabel{ref:foo}\sublabel{ref:bar}\sublabel{ref:baz}
+unless there is only one on the page, 
+in which case the letter is dropped.
+
+To be able to use [[\subpageref]] we must define the label with
+[[\sublabel]], used like label.  
+(Using [[\ref]] with a label defined by [[\sublabel]] will
+produce the sub-reference number, by the way, and [[\pageref]]
+works as expected.)
+%%
+Note that [[\subpageref]] is robust and [[\ref]] and [[\pageref]] 
+are redefined to be robust also, as they will be in future \LaTeX{} releases.
+Incidentally, these expand to the relevant text plus [[\null]]---you
+might want to strip this off, e.g.\ for sorting lists.
+
+
+
+
+\subsubsection{\texttt{\bs subpageref}}
+\label{sec:subpageref}
+
+Given \akey{}, print the identifier 
+(\synt{page no.}\synt{subpage} or \synt{chunk no.}) 
+associated with \akey{},
+from a previous [[\sublabel]] call,
+and, if hyperlinking is enabled,
+insert a hyperlink to the reference.
+%%
+<<knoweb.sty>>=
+\newcommand{\subpageref}[1]{%|\akey{}
+  \nwhyperreference{#1}{\nw@genericref\nw@subpageref{#1}}}
+@ %def \subpageref
+<<manpage: commands>>=
+.TP
+.B \\\\subpageref{\fIlabel\fP}
+Print the identifier associated with \fIlabel\fP
+from a call to \fB\\nextchunklabel{\fIlabel\fP}\fR.
+@
+
+
+Insert the identifier to a chunk into the text.
+If there is but one chunk on a page (or [[webnumbering]] is enabled),
+the [[\2on]]\param{page no.} is undefined, so just \param{page no.} is inserted;
+otherwise use the macro [[\nwthepagenum]] to convert the two parameters 
+into the desired format.
+
+The two parameters are delimited by [[\\]], 
+which is inserted by [[\nw@g@nericref]].
+%%
+<<knoweb.sty>>=
+\def\nw@subpageref#1#2\\{%|\param{sub-page} \param{page no.}
+  \@ifundefined{2on#2}
+    {#2}
+    {\nwthepagenum{#1}{#2}}}
+@ %def \nw@subpageref
+
+
+\subsubsection{\texttt{\bs subpagepair}}
+\label{sec:subpagepair}
+
+Given \akey{}, return \{\synt{sub-page}\}\{\synt{page no.}\}.
+If \akey{} has not been allocatted (by a call to [[\sublabel]]),
+return \{0\}\{0\}.
+%%
+<<knoweb.sty>>=
+\newcommand{\subpagepair}[1]{%|\akey{}
+  \@ifundefined{r@#1}%
+    {{0}{0}}
+    {\nw@genericref\nw@subpagepair{#1}}}
+@ %def \subpagepair
+
+
+
+Return \{\synt{sub-page}\}\{\synt{page no.}\}.
+If the referenced page has just one chunk,
+then set the \synt{sub-page} field to zero.
+%%
+The parameters are delimited by [[\\]], 
+which is inserted by [[\nw@g@nericref]].
+%%
+<<knoweb.sty>>=
+\def\nw@subpagepair#1#2\\{%|\param{sub-page} \param{page}
+  \@ifundefined{2on#2}
+    {{0}{#2}}
+    {{#1}{#2}}}
+@ %def \nw@subpagepair
+
+
+
+The \param{action} parameter is either the macro
+[[\nw@subpageref]] or [[\nw@subpagepair]].
+
+<<knoweb.sty>>=
+\newcommand\nw@genericref[2]{%|\param{action} \akey{}
+  \expandafter\nw@g@nericref\csname r@#2\endcsname#1{#2}}
+@ %def \nw@genericref
+
+<<knoweb.sty>>=
+\newcommand\nw@g@nericref[3]{%|\param{control sequence} \param{action} \akey{}
+  \ifx#1\relax
+    \ref{#3}%|trigger the standard `undefined ref' mechanisms (i.e. barf)
+  \else
+    \expandafter#2#1\\%
+  \fi}
+@ %def \nw@g@nericref
+
+
+
+\subsubsection{\texttt{\bs sublabel}}
+\label{sec:sublabel}
+
+
+
+[[\sublabel]] is like the [[\label]] command, except that it writes
+[[\newsublabel]] rather than [[\newlabel]] to the [[.aux]] file.
+For hyper-referencing, all labels must be hypertext 
+anchors, for which we use [[\nwblindhyperanchor]].
+This command is emitted by \noweave.
+%%
+<<initial code>>=
+\newcommand{\sublabel}[1]{%|\akey{}
+  \nwblindhyperanchor{#1}%
+  \@bsphack
+  \if@filesw
+    {\let\thepage=\relax
+     \def\protect{\noexpand\noexpand\noexpand}%
+     \edef\@tempa{\write\@auxout{\string
+                                 \newsublabel{#1}{{}{\thepage}}}}%
+     \expandafter}\@tempa
+     \if@nobreak\ifvmode\nobreak\fi\fi
+  \fi
+  \@esphack
+}
+@ %def \sublabel
+
+[[\nosublabel]] creates a label with a sub-page part of~0.
+\comment{Does \noweave emit this command?}
+%%
+<<knoweb.sty>>=
+\newcommand{\nosublabel}[1]{%
+  \@bsphack
+  \if@filesw
+    {\let\thepage\relax
+     \def\protect{\noexpand\noexpand\noexpand}%
+     \edef\@tempa{\write\@auxout{\string
+                                 \newlabel{#1}{{0}{\thepage}}}}%
+     \expandafter}\@tempa
+    \if@nobreak\ifvmode\nobreak\fi\fi
+  \fi
+  \@esphack}
+@ %def \nosublabel
+
+
+
+\subsubsection{\texttt{\bs newsublabel}}
+\label{sec:newsublabel}
+
+This is the macro that does the important work.  
+Its first argument is the \akey{},
+  its second is \{\synt{ref value}\synt{page no.}\}.
+\comment{The field \synt{ref value} appears to be always empty.}
+Note that \synt{page no.} is \synt{chunk number}
+when the package option [[webnumbering]] is in effect.
+
+%%
+<<knoweb.sty>>=
+\newcommand\newsublabel[2]{%|\akey{} \{\param{ref value}\param{page no.}\}
+  <<save \param{page no.} into [[\nw@thispage]]>>
+  <<update [[\nw@subpage]] and [[\nw@lastpage]]>>
+  <<if two sublabels on page, assign [[\2on\nw@thispage]]>>
+  <<add \akey{} to [[\pending@sublabels]] list>>
+  <<call [[\newlabel]] for each \akey{} in [[\pending@sublabels]]>>
+  <<clear [[\pending@sublabels]]>>
+}
+@ %def \newsublabel
+
+@ 
+<<save \param{page no.} into [[\nw@thispage]]>>=
+\edef\nw@thispage{\@cdr#2\@nil}%
+@ %def \nw@thispage
+
+@
+Check whether [[\nw@thispage]] has changed from the value of [[\nw@lastpage]],
+which was saved by a previous [[\newsublabel]] 
+(or is [[\relax]] if this is the first one).
+If the page is the same, increment the counter, [[\nw@subpage]], 
+that records the number of sub-labels on a page;
+otherwise reset it and redefine [[\nw@lastpage]].
+%%
+<<update [[\nw@subpage]] and [[\nw@lastpage]]>>=
+\ifx\nw@thispage\nw@lastpage
+  \advance\nw@subpage by\@ne
+\else
+  \nw@subpage=\@ne
+  \edef\nw@lastpage{\nw@thispage}%
+\fi
+@
+%%
+<<if two sublabels on page, assign [[\2on\nw@thispage]]>>=
+\ifnum\nw@subpage=\tw@
+  \global\@namedef{2on\nw@thispage}{}%
+\fi
+@
+\nextchunklabel{cl1}\nextchunklabel{cl2}
+Write a normal [[\newlabel]] with the sub-reference as the
+normal reference value in the second argument.
+Unfortunately, with hypertext support, the second argument of
+[[\newlabel]] gets complicated.
+It is either
+\begin{itemize}
+\item
+  \param{ref value}\param{page no.} when normal \LaTeX{} is running, or
+\item
+  \param{ref value}\param{page no.}\param{text}\param{hyper category}\param{URL}
+  when the \texttt{nameref} package is running.
+\end{itemize}
+Unify these two things by producing
+\param{ref value}\param{page no.}[[\nw@labeltrailers]].
+
+There may be pending labels in support of [[\nextchunklabel]], as defined in
+chunk~\subpageref{chunklabel}. 
+Because we want to define all of the ``pending sublabels'' in exactly
+the same way, we do something a bit odd---we make the current label a
+pending label as well.
+<<add \akey{} to [[\pending@sublabels]] list>>=
+\pendingsublabel{#1}%
+@
+
+Finally, for each key in [[\pending@sublabels]] call [[\newlabel]],
+assigning the macro [[\r@]]\akey{} to expand to \{[[\nw@subpage]]\}\{[[\nw@thispage]]\}.
+%%
+<<call [[\newlabel]] for each \akey{} in [[\pending@sublabels]]>>=
+\edef\@tempa##1{\noexpand\newlabel{##1}%
+  {{\number\nw@subpage}{\nw@thispage}\nw@labeltrailers}}%
+\pending@sublabels
+@
+
+<<clear [[\pending@sublabels]]>>=
+\def\pending@sublabels{}%
+@ 
+
+The assignment of [[\nw@labeltrailers]] depends on whether
+the package \texttt{nameref} is loaded, 
+which is determined by using [[\@ifpackageloaded]].  
+The assignment must occur before the macro [[\subname]] is expanded 
+(it calls [[\nw@labeltrailers]])
+and [[\subname]] is in the \file{aux} file,
+which is read (the first time) before the contents of [[\AtBeginDocument]]
+are expanded.
+
+To handle this, and permit a call to [[\subname]] in the body of the document,
+when the contents of [[\AtBeginDocument]] are expanded,
+[[\nw@labeltrailers]] is assigned 
+\textbf{and} its definition is written to the \file{aux} file.
+In subsequent passes through \LaTeX, the definition of [[\nw@labeltrailers]]
+is available to the [[\subname]] macros in the \file{aux} file.
+
+<<knoweb.sty>>=
+\AtBeginDocument{%
+  \xdef\nw@labeltrailers{\@ifpackageloaded{nameref}{{}{}{}}{}}%
+  \write\@mainaux{\string\gdef\string\nw@labeltrailers{\nw@labeltrailers}}}
+@ %def \nw@labeltrailers
+
+Now we keep track of those pending guys.\nextchunklabel{chunklabel}
+The goal here is to save them up until they are all equivalent to the
+label on the next chunk.
+We have to control expansion so chunks like \subpageref{cl1}
+(\subpageref{cl2}) can be labelled twice.
+<<knoweb.sty>>=
+\newcommand\nextchunklabel[1]{%|\akey{}
+  \nwblindhyperanchor{#1}%
+  \@bsphack
+  \if@filesw 
+    {\let\thepage=\relax
+     \edef\@tempa{\write\@auxout{\string\pendingsublabel{#1}}}%
+     \expandafter}\@tempa
+    \if@nobreak\ifvmode\nobreak\fi\fi
+  \fi
+  \@esphack
+}
+@ %def \nextchunklabel
+
+@
+<<manpage: commands>>=
+.TP
+.B \\\\nextchunklabel{\fIlabel\fP}
+Associates \fIlabel\fP
+with the sub-page reference of the next code chunk.
+Can be used for concise chunk cross-reference with, 
+e.g., \fBchunk~\\subpageref{\fIlabel\fP}\fR.
+@
+
+Insert [[\@tempa]]\{\akey{}\} at the front of the list [[\pending@sublabels]].
+%%
+<<knoweb.sty>>=
+\newcommand\pendingsublabel[1]{%|\akey{}
+  \def\@tempa{\noexpand\@tempa}%
+  \edef\pending@sublabels{\noexpand\@tempa{#1}\pending@sublabels}}
+@ %def \pendingsublabel 
+
+
+Define the initial expansion of [[\pending@sublabels]].
+Subsequent calls to [[\pendingsublabel]] redefines it to a list
+[[\@tempa]]\{\akey{n}\}$\cdots$[[\@tempa]]\{\akey{1}\}.
+%%
+<<knoweb.sty>>=
+\newcommand\pending@sublabels{}
+@ %def \pending@sublabels
+
+
+
+We need to define these.
+<<knoweb.sty>>=
+\newcommand\nw@lastpage{\relax}
+\newcount\nw@subpage
+@ %def \nw@subpage \nw@lastpage
+
+
+
+\subsubsection{Assign Sub-page Reference Options}
+\label{sec:assign-sub-page}
+
+
+<<declaration of options>>=
+\DeclareOption{alphasubpage}{%|\param{sub-page} \param{page}
+  \renewcommand\nwthepagenum[2]{#2\ifnum#1=\z@ \else\nw@int@to@str{#1}\fi}}
+\DeclareOption{numsubpage}{%
+  \renewcommand\nwthepagenum[2]{#2\ifnum#1=\z@ \else.\@arabic{#1}\fi}}
+\DeclareOption{nosubpage}{%
+  \renewcommand\nwthepagenum[2]{#2}%
+  \ExecuteOptions{nomargintag}}
+@ %def alphasubpage numsubpage nosubpage
+@ %def \nwthepagenum
+
+The default is [[alphasubpage]].
+%%
+<<execution of options>>=
+\ExecuteOptions{alphasubpage}
+@ 
+
+
+@
+Dummy assignment to [[\nwthepagenum]].
+This is reassigned during option processing.
+%%
+<<initial code>>=
+\newcommand\nwthepagenum[2]{}
+@ %def \nwthepagenum
+
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B alphasubpage, numsubpage, nosubpage
+Number chunks by the number of the page on which they appear,
+followed by an alphabetic (numeric, not used) ``sub-page'' indicator.
+Defaults to 
+.B alphasubpage.
+.B nosubpage
+implies
+.B nomargintag.
+@
+
+
+\subsubsection{Converting Integers to Strings}
+\label{sec:conv-integ-strings}
+
+To uniquely label the sub-page references,
+we need a macro that converts integers into strings,
+specifically, into strings of lower-case letters.
+The \LaTeX{} macro [[\@alph]] converts the natural numbers
+from $1$ to~$26$ into the characters \lit{a} to~\lit{z}.
+This should suffice for the majority of applications.
+
+In rare instances there may be more than 26~chunks on a page.
+In such a case, we need a sub-page lettering scheme that
+maps integers to multiple character strings.
+The chosen scheme is shown in table~\ref{tab:integer-to-strings}.
+
+
+\begin{table}[htbp]
+  \centering
+  \makeatletter\def\f{\nw@longalph}\makeatother
+  \begin{tabular}{c|cccccccccc}
+    $n$         & 1     & 2     & $\cdots$ & 26     & $26+1$ & $\cdots$ & $26^2+26$ & $26^2+26+1$ & $\cdots$ & $26^3+26^2+26$\\
+    \hline
+    $\alpha(n)$ & \f{1} & \f{2} & $\cdots$ & \f{26} & \f{27} & $\cdots$ & \f{702}   & \f{703}     & $\cdots$ &\f{18278}
+  \end{tabular}
+  \caption{Long integers to strings}
+  \label{tab:integer-to-strings}
+\end{table}
+
+The conversion requires a bit of thought because it is \emph{not} an
+ordinary conversion of integer to string.
+The problem is that the meaning of the letters depends on the position; 
+the letter~a acts like a zero in some positions or a one in others.
+
+@
+If we write the recurrence $B_k = B_{k-1} + 26^k$, with $B_0 = 0$, 
+we can use a string of~$k$ letters to represent numbers between
+$B_{k-1}$ and~$B_k$.
+Within that string, \lit{a} is~0, \lit{b} is~1, \ldots \lit{z} is~25
+and we use standard integer-conversion methods to encode $n-B_{k-1}$.
+
+The first loop finds $B^k$ and sets $n$ to $\synt{n}-1-B_{k-1}$,
+where \synt{n} is the parameter.
+The second does the usual string conversion.
+The entire macro body is enclosed in braces so that it can be used
+with [[\loop]] without picking up the wrong [[\repeat]].
+This macro handles integers up to 321,272,406,
+which corresponds to \lit{zzzzzz};
+it is limited by the range of \TeX's count registers.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@longalph[1]{{%|\param{n}
+  <<assign temporary count registers>>
+  <<$n\gets \synt{n}-1;\;\;B^k\gets 26$>>
+  \loop<<until $B^k>n$>>
+     <<$n\gets n-B^k;\;\;B^k\gets 26\,B^k$>>
+  \repeat
+  \loop<<while $B^k>1$>>
+    <<$B^k\gets \lfloor B^k/26 \rfloor;\;\;d\gets \lfloor n/B^k \rfloor$>>
+    <<write character corresponding to $d$>>
+    <<$n\gets n-d\,B^k$>>
+  \repeat
+}}
+@ %def \nw@longalph
+
+<<assign temporary count registers>>=
+\newcount\n
+\let\d=\@tempcnta
+\let\Btok=\@tempcntb
+@
+<<$n\gets \synt{n}-1;\;\;B^k\gets 26$>>=
+\n=#1\advance\n by\m@ne\Btok=26
+@
+<<until $B^k>n$>>=
+\ifnum\Btok>\n\else
+@
+<<$n\gets n-B^k;\;\;B^k\gets 26\,B^k$>>=
+\advance\n by -\Btok
+\multiply\Btok by 26
+@
+<<while $B^k>1$>>=
+\ifnum\Btok>\@ne
+@
+<<$B^k\gets \lfloor B^k/26 \rfloor;\;\;d\gets \lfloor n/B^k \rfloor$>>=
+\divide\Btok by 26
+\d=\n
+\divide\d by \Btok
+@
+The value of $d$ is an integer from 0 to~25.
+To print the corresponding lower-case letter,
+increment $d$ and use [[\@alph]].
+This is done in a group so that the external value of $d$ is not changed.\footnote{%
+  It may be faster to simply decrement $d$ after printing rather than grouping;
+  however, this better expresses the intent.}
+%%
+<<write character corresponding to $d$>>=
+{\advance\d by\@ne\@alph{\d}}%
+@
+<<$n\gets n-d\,B^k$>>=
+\multiply\d by \Btok
+\advance\n by -\d
+@
+
+
+\paragraph{Assign Integer to String Conversion Options}
+\label{sec:assign-integ-string}
+
+<<declaration of options>>=
+\DeclareOption{shortstrings}{\let\nw@int@to@str=\@alph}
+\DeclareOption{longstrings}{\let\nw@int@to@str=\nw@longalph}
+@ %def shortstrings longstrings \nw@int@to@str
+
+Set the default to [[shortstrings]].
+%%
+<<execution of options>>=
+\ExecuteOptions{shortstrings}
+
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B shortstrings, longstrings
+Choose whether the number to string conversion used by
+\fBalphasubpage\fP can handle integers greater than 26.
+Defaults to \fBshortstrings\fP.
+@
+
+
+
+\subsection{\texorpdfstring{\texttt{WEB}}{WEB}-like Chunk Numbering}
+\label{sec:web-like-chunk-numbering}
+
+To get the effect of WEB-like chunk numbers
+redefine [[\sublabel]] to use a counter instead of the current page number.
+Because the numbers are all distinct, no sub-page number is ever used.
+%%
+<<knoweb.sty>>=
+\newcount\nw@chunkcount
+\nw@chunkcount=\@ne
+\newcommand{\nw@weblabel}[1]{%|\akey{}
+  \nwblindhyperanchor{#1}%
+  \@bsphack
+  \if@filesw{%
+    \let\thepage\relax
+    \def\protect{\noexpand\noexpand\noexpand}%
+    \edef\@tempa{\write\@auxout{\string
+                                \newsublabel{#1}{{}{\number\nw@chunkcount}}}}%
+    \expandafter}%
+    \@tempa
+    \global\advance\nw@chunkcount by \@ne
+    \if@nobreak\ifvmode\nobreak\fi\fi
+  \fi
+  \@esphack}
+@ %def \nw@weblabel
+
+<<declaration of options>>=
+\DeclareOption{webnumbering}{%
+  \renewcommand\sublabel{\nw@weblabel}}
+@ %def webnumbering 
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B webnumbering
+Number chunks consecutively, in 
+.I WEB
+style, instead of using sub-page numbers.
+@
+@
+\subsection{Indexing (Identifier Cross-Reference) Support}
+
+\subsubsection{Tracking Definitions and Uses}
+All index definitions and uses are associated with 
+a label defined with [[\sublabel]] or [[\nosublabel]].
+Either the label is the [[\sublabel]] of the code chunk in which the definition or use
+appears, or it is a [[\nosublabel]] appearing in the middle of a
+documentation chunk.
+The commands [[\nwindexdefn]] and [[\nwindexuse]] are inserted into the generated \TeX{} file
+by [[noweave]].
+%
+<<knoweb.sty>>=
+\newcommand{\nwindexdefn}{%
+  <<remove ligatures, make actives [[\other]]>>
+  \@nwindexdefn}
+\newcommand{\@nwindexdefn}[3]{%|\synt{printable id} \synt{id label} \akey{}
+  \nw@auxix{\protect\nwixd}{#2}{#3}}
+\newcommand{\nwindexuse}{%
+  <<remove ligatures, make actives [[\other]]>>
+  \@nwindexuse}
+\newcommand{\@nwindexuse}[3]{%|\synt{printable id} \synt{id label} \akey{}
+  \nw@auxix{\protect\nwixu}{#2}{#3}}
+@ %def \nwindexdefn \nwindexuse \@nwindexdefn \@nwindexuse
+
+
+<<remove ligatures, make actives [[\other]]>>=
+\@noligs
+\ifx\verbatim@nolig@list\undefined
+\else
+  \let\do=\nw@makeother
+  \verbatim@nolig@list
+\fi
+@
+
+
+
+Write the string \lit{[[\nwixadd]]\{\synt{marker}\}\{\synt{id label}\}\{\synt{supage label}\}}
+to the auxiliary file.
+The field \synt{marker} is either \lit{[[\nwixd]]} or \lit{[[\nwixu]]},
+corresponding to the definition or use of an indexed item, respectively.
+%
+<<knoweb.sty>>=
+\newcommand{\nw@auxix}[3]{%|\synt{marker} \synt{id label} \akey{}
+   \@bsphack
+   \if@filesw 
+     {\let\nwixd=\relax
+      \let\nwixu=\relax
+      \def\protect{\noexpand\noexpand\noexpand}%
+      \edef\@tempa{\write\@auxout{\string\nwixadd{#1}{#2}{#3}}}%
+      \expandafter}\@tempa
+     \if@nobreak\ifvmode\nobreak\fi\fi
+   \fi
+   \@esphack}
+@ %def \nw@auxix
+
+If the macro [[\nwixl@]]\synt{id label} is undefined,
+define it so that its expansion is \synt{marker}\{\akey{}\}.
+Otherwise, reassign it, appending \synt{marker}\{\akey{}\} to its current expansion.
+%%
+<<knoweb.sty>>=
+\newcommand{\nwixadd}[3]{%|\synt{marker} \synt{id label} \akey{}
+  \@ifundefined{nwixl@#2}%
+    {\global\@namedef{nwixl@#2}{#1{#3}}}%
+    {\expandafter\nw@ixappend\csname nwixl@#2\endcsname{#1{#3}}}}
+@ %def \nwixadd
+
+\subsubsection{Subscripted Identifiers}
+
+We use either explicit subscripts or hyperlinks to point identifiers
+to their definitions.
+%%
+Each commmand takes two arguments, \synt{identifer} and \synt{link}.
+
+<<initial code>>=
+\newcommand{\nw@subscriptident}[2]{\mbox{$\mbox{#1}_{\mathrm{\subpageref{#2}}}$}}
+\newcommand{\nw@nosubscriptident}[2]{#1}
+\newcommand{\nw@hyperident}[2]{\leavevmode\nwhyperreference{#2}{#1}}
+@ %def \nw@subscriptident \nw@nosubscriptident \nw@hyperident
+
+We can use subscripts, hyperlinks, or nothing on all identifiers.
+Noweave inserts the macros [[\nwlinkedidentq]] and [[\nwlinkedidentc]]
+into the \TeX{} file.
+
+<<declaration of options>>=
+\DeclareOption{subscriptidents}{%
+  \let\nwlinkedidentq=\nw@subscriptident
+  \let\nwlinkedidentc=\nw@subscriptident
+}
+\DeclareOption{nosubscriptidents}{%
+  \let\nwlinkedidentq=\nw@nosubscriptident
+  \let\nwlinkedidentc=\nw@nosubscriptident
+}
+\DeclareOption{hyperidents}{%
+  \let\nwlinkedidentq=\nw@hyperident
+  \let\nwlinkedidentc=\nw@hyperident
+}
+\DeclareOption{nohyperidents}{%
+  \let\nwlinkedidentq=\nw@nosubscriptident
+  \let\nwlinkedidentc=\nw@nosubscriptident
+}
+@ %def subscriptidents nosubscriptidents hyperidents nohyperidents
+@ %def \nwlinkedidentq \nwlinkedidentc
+
+We can change only identifiers appearing in quoted code.
+<<declaration of options>>=
+\DeclareOption{subscriptquotedidents}{%
+  \let\nwlinkedidentq=\nw@subscriptident
+}
+\DeclareOption{nosubscriptquotedidents}{%
+  \let\nwlinkedidentq=\nw@nosubscriptident
+}
+\DeclareOption{hyperquotedidents}{%
+  \let\nwlinkedidentq=\nw@hyperident
+}
+\DeclareOption{nohyperquotedidents}{%
+  \let\nwlinkedidentq=\nw@nosubscriptident
+}
+@ %def subscriptquotedidents nosubscriptquotedidents hyperquotedidents nohyperquotedidents
+
+The default is to hyperlink everything.
+<<execution of options>>=
+\ExecuteOptions{hyperidents}
+@ 
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B subscriptidents, nosubscriptidents, hyperidents, nohyperidents
+Controls subscripting of identifiers in code, including quoted code.
+Selecting
+.B subscriptidents
+means an identifier appearing in a code chunk (or in quoted code
+within a documentation 
+chunk) will be subscripted with the chunk number of its definition.
+.B hyperidents
+means such identifiers will be hyperlinked to their definitions,
+provided of course that a hypertext package like
+.B hyperref
+is loaded.
+.B nosubscriptidents
+and 
+.B nohyperidents
+are equivalent, and they turn off such markings.
+The default is
+.B hyperidents.
+.TP
+.B subscriptquotedidents, nosubscriptquotedidents, hyperquotedidents, nohyperquotedidents
+Controls linking of identifiers as above, but applies only to uses of
+identifiers
+in quoted code.
+@
+\subsubsection{Writing Lists with Commas and Conjunction}
+
+\newcommand\sub[1]{\ensuremath{{}_{#1}}}
+
+Given a list of items,
+  \bss\synt{item\sub1}\bss\synt{item\sub2}\dots\bss\synt{item\sub{n-1}}\bss\synt{item\sub{n}},
+return a list with the items separated by commas, spaces, and an appropriate conjunction:
+\begin{quote}
+  \bss\synt{item\sub1}, \bss\synt{item\sub2}, \dots, %
+  \bss\synt{item\sub{n-1}}, \synt{and}\textasciitilde\bss\synt{item\sub{n}}.
+\end{quote}
+
+The conjunction, \synt{and}, depends on the selected language.
+For $n\ge3$ a comma is inserted after each item but the last
+and a tie is inserted between the conjunction and the final item.
+
+<<knoweb.sty>>=
+\newcommand\nw@commafy[1]{%
+  {\nw@ixlistcount{#1}%
+   \count@=\nw@ixcounter      %| $\verb+\count@+ \leftarrow \synt{number of items in list}$
+   \let\@comma@each=\\%
+   \ifcase\count@
+      \let\\=\@comma@each     %| $\synt{number of items in list} = 0$
+   \or
+      \let\\=\@comma@each     %| $\synt{number of items in list} = 1$
+   \or                        %| $\synt{number of items in list} = 2$
+      \def\\{\def\\{\space\nw@langdepand\space\@comma@each}%
+             \@comma@each}%
+   \else                      %| $\synt{number of items in list} \ge 3$
+      \def\\{\def\\{,\space%
+                   \advance\count@ by \m@ne
+                   \ifnum\count@=\@ne
+                     \nw@langdepand\nobreakspace
+                   \fi
+                   \@comma@each}%
+             \@comma@each}%
+   \fi
+   #1}}
+@ %def \nw@commafy
+
+\subsubsection{Improved Index Code}
+There are two kinds of lists.
+One kind is a generic list in which elements are preceded by [[\\]].
+If the elements are index elements, they are 
+\synt{printable identifier}\synt{label} pairs.
+The other kind is a list of sub-page labels, in which each 
+element is preceded by either [[\nwixd]] or [[\nwixu]].
+
+@
+Append the tokens to \param{list}.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@ixappend[2]{%|\param{list} \bs{marker}\synt{element}
+  {\toks0=\expandafter{#1}%
+   \def\@tempa{#2}%
+   \toks2=\expandafter{\@tempa}%
+   \xdef#1{\the\toks0 \the\toks2 }}}
+@ %def \nw@ixappend
+
+The reference list for an identifier labeled \synt{id}
+is always called [[\nwixl@]]\synt{id}.
+Most applications will work with reference lists by applying [[\\]]
+either to the defs or to the uses.
+<<knoweb.sty>>=
+\newcommand\nw@ixuses[1]{%|\param{label}
+  \def\nwixu{\\}%
+  \let\nwixd=\@gobble
+  \@nameuse{nwixl@#1}}
+\newcommand\nw@ixdefs[1]{%|\synt{label}
+  \def\nwixd{\\}%
+  \let\nwixu=\@gobble
+  \@nameuse{nwixl@#1}}
+@ %def \nw@ixuses \nw@ixdefs \nwixd \nwixu
+
+@
+
+
+\paragraph{Counting}
+\label{sec:counting}
+
+
+Some applications count uses to see whether there is any need to
+display information.
+Count the number of items in a list.
+Assign the global counter [[\nw@ixcounter]] the value.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@ixlistcount[1]{%|\synt{list with items prefixed with \lit{\bss}}
+  {\count@=\z@
+   \def\\##1{\advance\count@ by\@ne}%
+   #1%
+   \global\nw@ixcounter=\count@}}
+\newcount\nw@ixcounter
+@ %def \nw@ixlistcount \nw@ixcounter
+
+
+Assign macros for counting the number of definitions and uses of an identifier.
+
+<<knoweb.sty>>=
+\newcommand\nw@ixdefcount[1]{\nw@ixlistcount{\nw@ixdefs{#1}}}
+\newcommand\nw@ixusecount[1]{\nw@ixlistcount{\nw@ixuses{#1}}}
+@ %def \nw@ixusecount \nw@ixdefcount
+
+
+\subsubsection{Supporting a Mini-Index at the End of each Chunk}
+
+When displaying identifiers used, show the identifier and its definitions.
+%%
+<<knoweb.sty>>=
+\newcommand\nw@ixid@defs[1]{%|\synt{index pair}
+  {{\Tt \@car#1\@nil}%
+   \def\\##1{\nw@ixdefs@space\subpageref{##1}}\nw@ixdefs{\@cdr#1\@nil}}}
+@ %def \nw@ixid@defs
+
+
+\noweave inserts the calls to [[\nwidentuses]] into the \TeX{} file.
+Its argument is a list of index pairs,
+each index pair has the form \{\synt{printable id}\}\{\synt{id label}\}.
+
+<<knoweb.sty>>=
+\newcommand{\nwidentuses}{%
+  <<remove ligatures, make actives [[\other]]>>
+  \@nwidentuses}
+\newcommand{\@nwidentuses}[1]{%|\synt{list of index pairs}
+  \nwcodecomment{%
+    \nw@langdepuss\space
+    \let\\=\nw@ixid@defs
+    \nw@commafy{#1}.}}
+@ %def \nwidentuses \@nwidentuses
+
+
+
+The definitions section is a bit more complex, because it is omitted
+if none of the identifiers defined is ever used.
+
+@
+Set the global counter [[\nw@ixcounter]]
+to the number of used identifiers in the argument.
+<<knoweb.sty>>=
+\newcommand\nw@ixtotaluses[1]{%|\synt{list of index pairs}
+  {\count@=\z@
+   \def\\##1{%|\synt{index pair}
+     \nw@ixusecount{\@cdr##1\@nil}%
+     \advance\count@ by\nw@ixcounter}%
+   #1\global\nw@ixcounter=\count@ }}
+@ %def \nw@ixtotaluses
+
+@
+Display the symbols defined by a chunk.
+
+%%
+<<knoweb.sty>>=
+\newcommand{\nwidentdefs}[1]{%|\synt{list of index pairs}
+  \ifnw@hideunuseddefs
+    \nw@ixtotaluses{#1}%
+  \else\nw@ixlistcount{#1}%
+  \fi
+  \ifnum\nw@ixcounter>\z@
+    \nwcodecomment{\nw@langdepdfs:}%
+    {\def\\##1{\nw@ixid@uses##1}#1}%
+  \fi}
+@ %def \nwidentdefs
+
+<<knoweb.sty>>=
+\newcommand\nw@ixid@uses[2]{%|\synt{ident} \synt{label}
+  \nw@ixusecount{#2}%
+  {\addtolength{\leftskip}{\nwcodeindent}%
+   \ifnum\nw@ixcounter>\z@
+     \nwcodecomment{{\Tt #1},\space
+       \nw@langdepusd\space
+       \nw@langdepin\space\nw@chunkcommachunketc{\nw@ixuses{#2}}.}%
+   \else
+     \ifnw@hideunuseddefs
+     \else
+       \nwcodecomment{{\Tt #1},\space\nw@langdepnvu.}%
+    \fi
+  \fi}}
+@ %def \nw@ixid@uses
+
+
+
+\paragraph{Package Options}
+
+
+<<declaration of options>>=
+\DeclareOption{breakdefs}{\def\nw@ixdefs@space{\penalty200\ }}
+\DeclareOption{nobreakdefs}{\def\nw@ixdefs@space{\nobreakspace}}
+@ %def breakdefs nobreakdefs \nw@ixdefs@space 
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B breakdefs, nobreakdefs
+Permits/forbids breaking the mini-index that is printed 
+at the end of each code chunk.
+Defaults to \fBbreakdefs\fP.
+@
+
+<<execution of options>>=
+\ExecuteOptions{breakdefs}
+@
+
+<<undocumented -- man page: [[\noweboptions]]>>=
+.TP
+.B breakdefs, nobreakdefs
+.BR breakdefs ,
+which is the default,
+permits long lists of definitions to be broken in identifier cross-reference.
+Useful if identifier cross-reference produces lots of overfull hboxes.
+.B nobreakdefs
+is the old behavior, which should never be needed.
+@
+
+
+<<initial code>>=
+\newif\ifnw@hideunuseddefs\nw@hideunuseddefsfalse
+@ %def \ifnw@hideunuseddefs \nw@hideunuseddefstrue \nw@hideunuseddefsfalse
+
+<<declaration of options>>=
+\DeclareOption{hideunuseddefs}{\nw@hideunuseddefstrue}
+@ %def hideunuseddefs
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B hideunuseddefs
+Omit defined but unused identifiers from
+the local identifier cross-reference (Preston Briggs).
+@
+<<declaration of options>>=
+\DeclareOption{noidentxref}{%
+  \let\nwidentdefs=\@gobble
+  \let\nwidentuses=\@gobble}
+@ %def noidentxref
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B noidentxref
+Omit the local identifier cross-reference which follows each code chunk.
+@
+
+\subsubsection{Support for Chunk and Identifier Indices}
+\label{sec:supp-chunk-ident}
+
+Assign control sequences for typesetting chunk and identifier indices.
+
+
+\paragraph{Chunk Index}
+\label{sec:chunk-index}
+
+
+Assign the user-command, [[\nowebchunks]], that typesets the chunk index.
+The command prints a language-dependent preamble, [[\nw@langdeppre]],
+that explains the distinction between the underlined and normal indices
+then it typsets the index.
+The starred verion of [[\nowebchunks]] omits the preamble.
+
+@
+Check for the starred version, set the flag [[\nw@chunkspreamble]] appropriately,
+then call [[\nw@chunks]] 
+(which may have been reassigned by the option [[externalindex]]).
+%%
+<<knoweb.sty>>=
+\newcommand\nowebchunks{%
+  \@ifstar
+    {\nw@chunkspreamblefalse\nw@chunks}
+    {\nw@chunkspreambletrue\nw@chunks}}
+\newif\ifnw@chunkspreamble
+@ %def \nowebchunks 
+@ %def \ifnw@chunkspreamble
+@
+<<manpage: commands>>=
+.TP
+.B \\\\nowebchunks, \\\\nowebchunks*
+Create an index of the chunks.
+If the package option \fBlongchunks\fP is used,
+each entry includes links to the definition and uses of the chunk.
+A preamble describing the typesetting convention used in the links
+(definitions are underlined, uses are not) is also printed,
+unless \fB\\nowebchunks*\fP is used.
+@
+
+
+\paragraph{Internal Chunk Index}
+
+Assign the macro that typesets the internal built chunk index.
+The macro [[\nwixs@c]] is the list of chunks;
+if it is not defined, issue a warning and do nothing.
+
+<<initial code>>=
+\newcommand\nw@chunks{%
+  \@ifundefined{nwixs@c}
+     {\@warning{There are no \string\nowebchunks}}
+     {\begin{thenowebchunks}\nwixs@c\end{thenowebchunks}}}
+@ %def \nw@chunks
+
+
+
+\paragraph{External Chunk Index}
+
+Assign the macro that typesets an external chunk index,
+that is, the contents of the file [[\jobname.nwi]].
+
+<<initial code>>=
+\newcommand\nowebchunks@external{%
+  {\let\nwixadds@i=\@gobble
+   \def\nwixadds@c##1{\nw@onechunk##1}%
+   <<assign [[\nwixaddsx]]>>%
+   \begin{thenowebchunks}\@input{\jobname.nwi}\end{thenowebchunks}}}
+\@namedef{r@nw@notdef}{{0}{(\nw@langdepnvd)}}
+@ %def \nowebchunks@external \r@nw@notdef
+
+
+\paragraph{The Chunks Index Environment}
+\label{sec:chunks-index-envir}
+
+Print a language appropriate preamble, [[\nw@langdeppre]],
+unless the [[longchunks]] option was not selected
+or the starred version of [[\nowebchunks]] was used.
+Then setup the paragraph indentation.
+\comment{Why is 10pt used?  Should this be 1em?}
+
+<<knoweb.sty>>=
+\newenvironment{thenowebchunks}
+{\ifnw@chunkspreamble
+   \ifnw@longchunks
+     \nw@langdeppre\par\vspace{1ex}%
+ \fi\fi
+ <<set index environment paragraph spacing>>
+ \def\\##1{\nw@onechunk ##1}}
+{}
+@ %def thenowebchunks
+
+
+Typeset an indexed chunk as \lit{\synt{\synt{name} \synt{label}} [\synt{list}]},
+where 
+  \synt{name} is the name of the chunk, typeset in the normal font;
+  \synt{label} is the chunk label, typeset with [[\tagstyle]];
+and
+  the optional \synt{list} is a list of tags pointing to the definition and uses of the chunk,
+  it is typeset only if the [[longchunks]] package option is enabled.
+\comment{It might be useful to add a [[\chunknamestyle]] macro to
+    permit the user to modify the font used in the chunk name.  This
+    could be used everywhere, or restricted to the index.}
+
+<<knoweb.sty>>=
+\newcommand\nw@onechunk[3]{%|\param{name} \param{label of first definition} \param{list with \texttt{\bs nwixd}, \texttt{\bs nwixu}}
+  \@ifundefined{r@#2}{}{%
+    \indent\LA #1\nobreakspace{\nwtagstyle\subpageref{#2}}\RA 
+    \ifnw@longchunks\nobreakspace{\nw@underlinedefs{#3}}\fi
+    \par}}
+@ %def \nw@onechunk
+
+
+\paragraph{Chunk Package Option}
+\label{sec:chunk-package-option}
+
+Assign the package option [[longchunks]],
+used to add a list of tags of the definition and uses of a chunk
+in the chunk index.
+
+<<initial code>>=
+\newif\ifnw@longchunks
+\nw@longchunksfalse
+@ %def \ifnw@longchunks
+
+<<declaration of options>>=
+\DeclareOption{longchunks}{\nw@longchunkstrue}
+@ %def longchunks
+
+
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B longchunks
+When expanding 
+.B "\\\\nowebchunks,"
+show page numbers of definitions and uses of each chunk.
+@
+
+
+\paragraph{Identifier Index}
+\label{sec:identifier-index}
+
+Assign the user-command, [[\nowebindex]], that typesets the identifier index.
+The command prints a language-dependent preamble, [[\nw@langdeppre]],
+that explains the distinction between the underlined and normal indices
+then it typsets the index.
+The starred verion of [[\nowebindex]] omits the preamble.
+
+@
+Check for the starred version, 
+set the flag [[\nw@indexpreamble]] appropriately,
+then call [[\nw@index]] 
+(which may have been reassigned by the option [[externalindex]]).
+
+<<knoweb.sty>>=
+\newcommand\nowebindex{%
+  \@ifstar
+    {\nw@indexpreamblefalse\nw@index}
+    {\nw@indexpreambletrue\nw@index}}
+\newif\ifnw@indexpreamble
+@ %def \nowebindex 
+@ %def \ifnw@indexpreamble
+@
+<<manpage: commands>>=
+.TP
+.B \\\\nowebindex, \\\\nowebindex*
+Create an index of the identifiers.
+A preamble describing the typesetting convention used in the links
+(definitions are underlined, uses are not) is also printed,
+unless \fB\\nowebindex*\fP is used.
+@
+
+\paragraph{Internal Identifer Index}
+
+Assign the macro that typesets the internally built identifier index.
+The macro [[\nwixs@i]] is the list of identifiers;
+if it is not defined, issue a warning and do nothing.
+
+<<initial code>>=
+\newcommand\nw@index{%
+  \@ifundefined{nwixs@i}
+    {\@warning{The \string\nowebindex{} is empty}}
+    {\begin{thenowebindex}\nwixs@i\end{thenowebindex}}}
+@ %def \nw@index
+
+\paragraph{External Identifier Index}
+
+Assign the macro that typesets an external identifier index,
+that is, the contents of the file [[\jobname.nwi]].
+
+<<initial code>>=
+\newcommand\nowebindex@external{%
+  {\let\nwixadds@c=\@gobble
+   \def\nwixadds@i##1{\nw@indexline##1}%
+   <<assign [[\nwixaddsx]]>>%
+   \begin{thenowebindex}\@input{\jobname.nwi}\end{thenowebindex}}}
+@ %def \nowebindex@external 
+
+
+\paragraph{The Identifier Index Environment}
+\label{sec:index-index-envir}
+
+Print a language appropriate preamble, [[\nw@langdeppre]],
+unless the starred version of [[\nowebindex]] was used.
+Then setup the paragraph indentation.
+%%
+<<knoweb.sty>>=
+\newenvironment{thenowebindex}
+{\ifnw@indexpreamble
+   \nw@langdeppre\par\vspace{1ex}%
+ \fi
+ <<set index environment paragraph spacing>>
+ \def\\##1{\nw@indexline ##1}}
+{}
+@ %def thenowebindex
+
+Typeset an indexed identifier as \lit{\synt{name}: \synt{list}},
+where 
+  \synt{name} is the name of the identifier, typeset in a typewriter font
+and
+  \synt{list} is a list of tags pointing to the definition and uses of the identifier.
+
+<<knoweb.sty>>=
+\newcommand\nw@indexline[2]{%
+   \indent{\Tt #1}:\space{\nw@underlinedefs\@nameuse{nwixl@#2}}%
+   \par}
+@ %def \nw@indexline
+
+
+
+
+\paragraph{Common Index Macros}
+\label{sec:common-index-macros}
+
+\comment{Why is 10pt used?  Should this be 1em?}
+%%
+<<set index environment paragraph spacing>>=
+\vspace{3pt}
+\setlength{\parskip}{\z@}%
+\setlength{\parindent}{-10pt}%
+\addtolength{\leftskip}{10pt}%
+\addtolength{\rightskip}{\z@ plus10pt}%
+\@afterindenttrue
+@
+
+
+<<knoweb.sty>>=
+\newcommand\nw@underlinedefs{%|\param{list with \texttt{\bs nwixd} and \texttt{\bs nwixu}}
+   \let\\=\relax
+   \def\nw@comma{,\space}%
+   \def\nwixd##1{\\\underline{\subpageref{##1}}\let\\\nw@comma}%
+   \def\nwixu##1{\\\subpageref{##1}\let\\\nw@comma}}
+@ %def \nw@underlinedefs \nwixd \nwixu
+
+
+<<assign [[\nwixaddsx]]>>=
+\def\nwixaddsx##1##2{\@nameuse{nwixadds@##1}{##2}}%
+@ %def \nwixaddsx
+
+Allocate and assign the default value of [[\nwixaddsx]].
+%%
+<<initial code>>=
+\newcommand{\nwixaddsx}{}
+\let\nwixaddsx=\@gobbletwo
+@ %def \nwixaddsx
+
+\noweave inserts strings \lit{[[\nwixlogsorted]]\{\param{type}\}\{\param{data}\}} into the \TeX{} file.
+When expanded these strings create the lists of indexed chunks and identifiers.
+The field \param{type} is either 
+   \lit{c}, indicating a chunk,
+or \lit{i}, indicating an identifier.
+The expansion of [[\nwixlogsorted]] writes the string 
+  \lit{[[\nwixadds]]\{\param{type}\}\{\param{data}\}}
+to the auxiliary file.
+
+<<knoweb.sty>>=
+\newcommand\nwixlogsorted[2]{%|\param{type} \param{data}
+   \@bsphack
+   \if@filesw 
+     \toks0={#2}%
+     \immediate\write\@auxout{\string\nwixadds{#1}{\the\toks0}}%
+     \if@nobreak\ifvmode\nobreak\fi\fi
+   \fi
+   \@esphack}
+@ %def \nwixlogsorted
+
+
+Append an element to the chunk list, [[\nwixs@c]], or the identifier list, [[\nwixs@i]],
+depending whether the first argument, \param{type}, is \lit{c} or \lit{i}, respectively.
+If the list does not exist, create it.
+%%
+<<initial code>>=
+\newcommand\nwixadds[2]{%|\param{type} \param{data}
+  \@ifundefined{nwixs@#1}%
+    {\global\@namedef{nwixs@#1}{\\{#2}}}%
+    {\expandafter\nw@ixappend\csname nwixs@#1\endcsname{\\{#2}}}}
+@ %def \nwixadds
+
+
+
+If an external index is used, we need a [[.nwi]] file,
+[[\nwixadds]] is to be ignored, and we use [[\nwixaddsx]].
+<<declaration of options>>=
+\DeclareOption{externalindex}{%
+  \let\nwixaddsx=\nwixadds 
+  \let\nwixadds=\@gobbletwo
+  \let\nw@index=\nowebindex@external
+  \let\nw@chunks=\nowebchunks@external}
+@ %def externalindex
+
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B externalindex
+Use an index generated with 
+.I noindex(1)
+(q.v.).
+@
+@
+
+
+@
+\subsection{Support for Hypertext}
+
+There are two sets of support for hypertext.
+Balasubramanian Narasimhan wrote initial support for \file{hyper.sty}.
+Norman Ramsey wrote support for \file{hyperrref.sty} (May 1998).
+The macros [[\nwblindhyperanchor]] and [[\nwhyperreference]]
+are assigned to handle the appropriate package.
+
+The [[\nwblindhyperanchor]] macro takes a single argument, \akey{},
+and inserts a hyperlink anchor at the location it is expanded.
+If no hypertext package has been loaded, it gobbles its argument.
+
+The [[\nwhyperreference]] macro has two arguments,
+\akey{} and \param{identifier}.
+It inserts a hyperlink consisting of the text \param{identifer}
+at the location it is expanded and pointing to the anchor \akey{}.
+If no hypertext package is loaded, it gobbles its first argument, \akey{},
+and prints \param{identifier}.
+%%
+<<knoweb.sty>>=
+\newcommand\nwblindhyperanchor{\@gobble}
+\newcommand\nwhyperreference{\@gobble}
+\AtBeginDocument{%
+  \@ifpackageloaded{hyperref}
+    {\gdef\nwblindhyperanchor#1{\hypertarget{noweb.#1}{\relax}}%
+     \gdef\nwhyperreference#1#2{\hyperlink{noweb.#1}{#2}}}
+    {}
+  \@ifpackageloaded{hyper}
+    {\gdef\nwblindhyperanchor{\blindhyperanchor}%
+     \gdef\nwhyperreference{\hyperreference}}
+    {}}
+@ %def \nwblindhyperanchor \nwhyperreference 
+
+
+\subsection{Support for Hypertext Translation to HTML}
+
+
+<<knoweb.sty>>=
+\newcommand\nwanchorto{%
+  \begingroup\let\do\@makeother\dospecials
+     \catcode`\{=1 \catcode`\}=2 \nw@anchorto}
+\newcommand{\nw@anchorto}[1]{\endgroup\def\nw@next{#1}\nw@anchortofin}
+\newcommand{\nw@anchortofin}[1]{#1\footnote{See URL \texttt{\nw@next}.}}
+\let\nwanchorname\@gobble
+@ %def \nwanchorto \nw@anchorto \nw@anchortofin
+@
+<<manpage: commands>>=
+.TP
+.B \\\\nwanchorto{\fIURL\fP}{\fIanchor-text\fP}
+Create a link to the given \fIURL\fP with the given \fIanchor-text\fP.
+Implemented in 
+.I latex(1)
+using footnotes, but 
+.I sl2h(1)
+translates this to
+.B "<a href=\fIURL\fP>\fIanchor-text\fP</a>"
+.TP
+.B \\\\nwanchorname{\fIname\fP}{\fIanchor-text\fP}
+Creates an anchor point for a hyperlink.
+Implemented in 
+.I latex(1)
+using 
+.BR \\\\\\label ,
+but
+.I sl2h(1)
+translates this to
+.B "<a name=\fIname\fP>\fIanchor-text\fP</a>"
+@
+
+This lets us hide stuff intended for use only when converting to HTML:
+<<knoweb.sty>>=
+\newif\ifhtml
+\htmlfalse
+@ %def \ifhtml
+<<manpage: commands>>=
+.TP
+.B \\\\ifhtml \fItext\fP \\\\fi
+The \fItext\fP between \fB\\ifhtml\fP and \fB\\fi\fP
+is ignored by 
+.IR latex(1) ,
+but 
+.I sl2h(1)
+and the 
+.I l2h 
+noweb filter translate \fItext\fP into HTML.
+@ 
+\subsection{Support for Prettyprinting}
+
+The following macro can be redefined to allow custom typesetting of
+identifiers in the index and mini-indices.
+%%
+<<knoweb.sty>>=
+\newcommand\nwixident{}
+\let\nwixident=\relax
+@ %def \nwixident
+@
+The following macros can be redefined to typeset `[[\]]', `[[{]]' and
+`[[}]]' correctly in non-typewriter fonts. 
+The problem is that the built-in {\LaTeX} [[\{]] tries to produce a
+math symbol, which doesn't exist in the typewriter font, so we get a
+brace in the wrong font and a warning.  Most unpleasant.
+Noweave therefore attempts to emit [[\nwlbrace]] and [[\nwrbrace]]
+wherever it believes braces should appear.
+The standard noweb style is to set code in typewriter font, and so the
+standard definitions just select the proper characters from that font.
+ People setting code in
+fonts other than typewriter are responsible for redefining those
+macros to work in their environment.
+<<knoweb.sty>>=
+\newcommand{\nwbackslash}{\ifmmode\backslash\else\textbackslash\fi}
+\newcommand{\nwlbrace}{\ifmmode\lbrace\else\textbraceleft\fi}
+\newcommand{\nwrbrace}{\ifmmode\rbrace\else\textbraceright\fi}
+@
+\subsection{Language-Dependent Macros} 
+
+Miguel Filgueiras
+(DCC-FCUP \& LIACC, Universidade do Porto) provided some changes to
+add multilingual support for the words Noweb uses in indexing and
+cross-reference.
+He inserted macros that are defined by, e.g., [[\noweboptions{english}]].
+The Noweb package uses the
+(apparently standard) {\LaTeX} macro [[\languagename]] to select a
+language at load time.
+If the \texttt{babel} package is loaded 
+(with the appropriate language name) 
+before Noweb is loaded, 
+the Noweb package selects the language appropriately, 
+provided it is one that Noweb supports.
+Mr.~Filgueiras provided support for 
+English, Portuguese, German, and French. 
+He notes that the French is faulty; 
+the translations may be poor, and there are
+bugs in the implementation that he could not solve.
+%%
+<<execution of options>>=
+\ExecuteOptions{english}
+@ 
+\subsubsection{Support for English}
+
+This describes the original English text.
+<<declaration of options>>=
+\DeclareOption{english}{%
+  \def\nw@langdepdef{<<english: This definition is continued>>}%
+  \def\nw@langdepcud{<<english: This code is used>>}%
+  \def\nw@langdeprtc{<<english: Root chunk (not used in this document)>>}%
+  \def\nw@langdepcwf{<<english: This code is written to file>>}%
+  \def\nw@langdepchk{<<english: chunk>>}%
+  \def\nw@langdepchks{<<english: chunks>>}%
+  \def\nw@langdepin{<<english: in>>}%
+  \def\nw@langdepand{<<english: and>>}%
+  \def\nw@langdepuss{<<english: Uses>>}%
+  \def\nw@langdepusd{<<english: used>>}%
+  \def\nw@langdepnvu{<<english: never used>>}%
+  \def\nw@langdepdfs{<<english: Defines>>}%
+  \def\nw@langdepnvd{<<english: never defined>>}%
+  \def\nw@langdeppre{<<english: Underlined indices\ldots>>}%
+}
+\DeclareOption{american}{\ExecuteOptions{english}}
+\DeclareOption{USenglish}{\ExecuteOptions{english}}
+\DeclareOption{canadian}{\ExecuteOptions{english}}
+\DeclareOption{UKenglish}{\ExecuteOptions{english}}
+\DeclareOption{british}{\ExecuteOptions{english}}
+
+@ %def english american USenglish canadian UKenglish british
+@ %def \nw@langdepdef
+@ %def \nw@langdepcud
+@ %def \nw@langdeprtc
+@ %def \nw@langdepcwf
+@ %def \nw@langdepchk
+@ %def \nw@langdepchks
+@ %def \nw@langdepin
+@ %def \nw@langdepand
+@ %def \nw@langdepuss
+@ %def \nw@langdepusd
+@ %def \nw@langdepnvu
+@ %def \nw@langdepdfs
+@ %def \nw@langdepnvd
+@ %def \nw@langdeppre
+
+<<english: This definition is continued>>=
+This definition is continued
+@
+<<english: This code is used>>=
+This code is used
+@
+<<english: Root chunk (not used in this document)>>=
+Root chunk (not used in this document)
+@
+<<english: This code is written to file>>=
+This code is written to file
+@
+<<english: chunk>>=
+chunk
+@
+<<english: chunks>>=
+chunks
+@
+<<english: in>>=
+in
+@
+<<english: and>>=
+and
+@
+<<english: Uses>>=
+Uses
+@
+<<english: used>>=
+used
+@
+<<english: never used>>=
+never used
+@
+<<english: Defines>>=
+Defines
+@
+<<english: never defined>>=
+never defined
+@
+
+<<english: Underlined indices\ldots>>=
+\underline{Underlined} indices denote definitions;
+regular indices denote uses.
+@
+
+
+\subsubsection{Support for Portuguese}
+
+This contains the text in Portuguese.
+%%
+<<declaration of options>>=
+\DeclareOption{portuges}{%
+  \def\nw@langdepdef{<<portuguese: This definition is continued>>}%
+  \def\nw@langdepcud{<<portuguese: This code is used>>}%
+  \def\nw@langdeprtc{<<portuguese: Root chunk (not used in this document)>>}%
+  \def\nw@langdepcwf{<<portuguese: This code is written to file>>}%
+  \def\nw@langdepchk{<<portuguese: chunk>>}%
+  \def\nw@langdepchks{<<portuguese: chunks>>}%
+  \def\nw@langdepin{<<portuguese: in>>}%
+  \def\nw@langdepand{<<portuguese: and>>}%
+  \def\nw@langdepuss{<<portuguese: Uses>>}%
+  \def\nw@langdepusd{<<portuguese: used>>}%
+  \def\nw@langdepnvu{<<portuguese: never used>>}%
+  \def\nw@langdepdfs{<<portuguese: Defines>>}%
+  \def\nw@langdepnvd{<<portuguese: never defined>>}%
+  \def\nw@langdeppre{<<portuguese: Underlined indices\ldots>>}%
+}
+\DeclareOption{portuguese}{\ExecuteOptions{portuges}}
+\DeclareOption{brazilian}{\ExecuteOptions{portuges}}
+\DeclareOption{brazil}{\ExecuteOptions{portuges}}
+@ %def portuges portuguese brazilian brazil
+
+
+<<portuguese: This definition is continued>>=
+Defini\c{c}\~ao continuada em
+@
+<<portuguese: This code is used>>=
+C\'odigo usado em
+@
+<<portuguese: Root chunk (not used in this document)>>=
+Fragmento de topo (sem uso no documento)
+@
+<<portuguese: This code is written to file>>=
+Este c\'odigo foi escrito no ficheiro
+@
+<<portuguese: chunk>>=
+fragmento
+@
+<<portuguese: chunks>>=
+fragmentos
+@
+<<portuguese: in>>=
+no(s)
+@
+<<portuguese: and>>=
+e
+@
+<<portuguese: Uses>>=
+Usa
+@
+<<portuguese: used>>=
+usado
+@
+<<portuguese: never used>>=
+nunca usado
+@
+<<portuguese: Defines>>=
+Define
+@
+<<portuguese: never defined>>=
+nunca definido
+@
+<<portuguese: Underlined indices\ldots>>=
+Os \'indices \underline{sublinhados} indicam defini\c{c}\~oes; 
+outros \'indices indicam usos.
+@
+
+\subsubsection{Support for Spanish}
+
+Tentative translation to Spanish by Jos\'e Riel.  
+Improvements welcome.
+%%
+<<declaration of options>>=
+\DeclareOption{spanish}{%
+  \def\nw@langdepdef{<<spanish: This definition is continued>>}%
+  \def\nw@langdepcud{<<spanish: This code is used>>}%
+  \def\nw@langdeprtc{<<spanish: Root chunk (not used in this document)>>}%
+  \def\nw@langdepcwf{<<spanish: This code is written to file>>}%
+  \def\nw@langdepchk{<<spanish: chunk>>}%
+  \def\nw@langdepchks{<<spanish: chunks>>}%
+  \def\nw@langdepin{<<spanish: in>>}%
+  \def\nw@langdepand{<<spanish: and>>}%
+  \def\nw@langdepuss{<<spanish: Uses>>}%
+  \def\nw@langdepusd{<<spanish: used>>}%
+  \def\nw@langdepnvu{<<spanish: never used>>}%
+  \def\nw@langdepdfs{<<spanish: Defines>>}%
+  \def\nw@langdepnvd{<<spanish: never defined>>}%
+  \def\nw@langdeppre{<<spanish: Underlined indices\ldots>>}%
+}
+@ %def spanish
+
+
+<<spanish: This definition is continued>>=
+Esta definici\'on se contin\'ua
+@
+<<spanish: This code is used>>=
+Esta c\'odigo se utiliza
+@
+<<spanish: Root chunk (not used in this document)>>=
+Fragmento de la tapa (no usado en este documento)
+@
+<<spanish: This code is written to file>>=
+Este c\'odigo se escribe al ficheiro
+@
+<<spanish: chunk>>=
+fragmento
+@
+<<spanish: chunks>>=
+fragmentos
+@
+<<spanish: in>>=
+em
+@
+<<spanish: and>>=
+e
+@
+<<spanish: Uses>>=
+Usa
+@
+<<spanish: used>>=
+usos
+@
+<<spanish: never used>>=
+nunca usado
+@
+<<spanish: Defines>>=
+Define
+@
+<<spanish: never defined>>=
+nunca definido
+@
+
+<<spanish: Underlined indices\ldots>>=
+Los \'indices \underline{subrayados} indican definiciones; 
+otros \'indices indican aplicaciones.
+@
+
+
+
+\subsubsection{Support for French}
+
+This is a tentative translation to French.
+Although NR has made some corrections, it should probably be
+reviewed by a native speaker.
+
+There are problems with using accents: on the [[\nw@langdepnvd]] macro
+(which apparently is not used in the context of [[\nwcodecomment]]),
+and in some other macros \LaTeX{} complains about missing
+[[\endcsname]]. This should be fixed by someone with experience in
+using \TeX.
+\comment{JR: The problem occurs with the OT1 font encoding, 
+it does not occur with T1.}
+%%
+<<declaration of options>>=
+\DeclareOption{frenchb}{%
+  \def\nw@langdepdef{<<french: This definition is continued>>}%
+  \def\nw@langdepcud{<<french: This code is used>>}%
+  \def\nw@langdeprtc{<<french: Root chunk (not used in this document)>>}%
+  \def\nw@langdepcwf{<<french: This code is written to file>>}%
+  \def\nw@langdepchk{<<french: chunk>>}%
+  \def\nw@langdepchks{<<french: chunks>>}%
+  \def\nw@langdepin{<<french: in>>}%
+  \def\nw@langdepand{<<french: and>>}%
+  \def\nw@langdepuss{<<french: Uses>>}%
+  \def\nw@langdepusd{<<french: used>>}%
+  \def\nw@langdepnvu{<<french: never used>>}%
+  \def\nw@langdepdfs{<<french: Defines>>}%
+  \def\nw@langdepnvd{<<french: never defined>>}%
+  \def\nw@langdeppre{<<french: Underlined indices\ldots>>}
+}
+\DeclareOption{french}{\ExecuteOptions{frenchb}}
+\DeclareOption{francais}{\ExecuteOptions{frenchb}}
+\DeclareOption{acadian}{\ExecuteOptions{frenchb}}
+\DeclareOption{canadien}{\ExecuteOptions{frenchb}}
+@ %def frenchb french francais acadian canadien
+
+<<french: This definition is continued>>=
+Cette d\'efinition suit
+@
+<<french: This code is used>>=
+Ce code est employ\'e
+@
+<<french: Root chunk (not used in this document)>>=
+Morceau racine (pas employ\'e dans ce document)
+@
+<<french: This code is written to file>>=
+Ce code est \'ecrit aux fichier
+@
+<<french: chunk>>=
+le morceau
+@
+<<french: chunks>>=
+les morceaux
+@
+<<french: in>>=
+dans
+@
+<<french: and>>=
+et
+@
+<<french: Uses>>=
+Il emploie
+@
+<<french: used>>=
+employ\'{e}
+@
+<<french: never used>>=
+jamais employ\'{e}
+@
+<<french: Defines>>=
+Il d\'{e}fine
+@
+% Cannot use the accent here: jamais d\'{e}fini
+<<french: never defined>>=
+jamais defini
+@
+<<french: Underlined indices\ldots>>=
+Les index soulignes indiquent des definitions ; 
+d'autres index indiquent des utilisations.
+@
+
+
+
+
+\subsubsection{Support for German}
+
+This is a translation to German by Sabine Broda (DCC-FCUP \& LIACC,
+Universidade do Porto).
+<<declaration of options>>=
+\DeclareOption{german}{%
+  \def\nw@langdepdef{<<german: This definition is continued>>}%
+  \def\nw@langdepcud{<<german: This code is used>>}%
+  \def\nw@langdeprtc{<<german: Root chunk (not used in this document)>>}%
+  \def\nw@langdepcwf{<<german: This code is written to file>>}%
+  \def\nw@langdepchk{<<german: chunk>>}%
+  \def\nw@langdepchks{<<german: chunks>>}%
+  \def\nw@langdepin{<<german: in>>}%
+  \def\nw@langdepand{<<german: and>>}%
+  \def\nw@langdepuss{<<german: Uses>>}%
+  \def\nw@langdepusd{<<german: used>>}%
+  \def\nw@langdepnvu{<<german: never used>>}%
+  \def\nw@langdepdfs{<<german: Defines>>}%
+  \def\nw@langdepnvd{<<german: never defined>>}%
+  \def\nw@langdeppre{<<german: Underlined indices\ldots>>}
+}
+\DeclareOption{ngerman}{\ExecuteOptions{german}}
+\DeclareOption{germanb}{\ExecuteOptions{german}}
+@ %def german ngerman germanb
+
+
+<<german: This definition is continued>>=
+Diese Definition wird fortgesetzt
+@
+<<german: This code is used>>=
+Dieser Code wird benutzt
+@
+<<german: Root chunk (not used in this document)>>=
+Hauptteil (nicht in diesem Dokument benutzt)
+@
+<<german: This code is written to file>>=
+Dieser Code schreibt man zum File
+@
+<<german: chunk>>=
+Teil
+@
+<<german: chunks>>=
+Teils
+@
+<<german: in>>=
+im
+@
+<<german: and>>=
+und
+@
+<<german: Uses>>=
+Benutzt
+@
+<<german: used>>=
+benutzt
+@
+<<german: never used>>=
+nicht benutzt
+@
+<<german: Defines>>=
+Definiert
+@
+<<german: never defined>>=
+nicht definiert
+@
+<<german: Underlined indices\ldots>>=
+Unterstrichene Indizes zeigen Definitionen an; 
+andere Indizes zeigen Gebrauch an.
+@
+
+
+
+@
+<<manpage: [[\noweboptions]]>>=
+.TP
+.B english (amerian, USenglish, canadian, UKenglish, british), \
+   french (frenchb, francais, acadian, canadien), \
+   german (germanb, ngerman), \
+   portuges (portuguese, brazilian, brazil), \
+   spanish
+Write cross-reference information in the language specified.
+The languages in parentheses are, for this package, aliases for the preceding language.
+Defaults to \fBenglish\fP.
+@
+@
+
+
+<<knoweb.sty>>=
+\endinput
+@
+
+
+
+<<manpage: knowebstyle.7>>=
+.TH knowebstyle 7
+.SH NAME
+knoweb.sty \- \fILaTeX\fP package for \fInoweb\fP
+.SH SYNOPSIS
+.B "\\\\usepackage{knoweb}"
+.br
+.B "\\\\usepackage[opt1,opt2,...,optn]{knoweb}"
+.SH DESCRIPTION
+The file \fBknoweb.sty\fP is a \fILaTeX\fP style file
+that formats the \fILaTeX\fP code 
+generated by \fInoweave\fP.  
+It replaces \fBnoweb.sty\fP, 
+which is distributed with \fInoweb\fP.
+.SH OPTIONS
+Options to the \fBknoweb\fP package are passed in the usual \fILaTeX\fP fashion, 
+as a comma-separated list enclosed in rectangular brackets.
+For example, \fB\\usepackage[webnumbering,longchunks]{knoweb}\fP.
+<<manpage: [[\noweboptions]]>>
+.SH CONTROL SEQUENCES
+The \fIknoweb\fP package defines many control sequences.
+Most are either not directly accessible by the user
+or are commands/environments automatically inserted by \fInoweave\fP.
+The following subsections describe those control sequences
+intended for the user.
+.SS COMMANDS
+<<manpage: commands>>
+.SS ENVIRONMENTS
+A \fILaTeX\fP environment \fIenv\fP
+is used to surround \fItext\fP to be formatted,
+for example,
+\fB\\begin{\fIenv\fP}\fR \fItext\fP \fB\\end{\fIenv\fP}\fR.
+<<manpage: environments>>
+.SS STYLE HOOKS
+Style hooks are \fILaTeX\fP parameters 
+that affect the default behaviour of the \fIknoweb\fP style.
+<<manpage: style hooks>>
+.SH AUTHORS
+\fBknoweb.sty\fP was written by Joseph Riel, \fBjoer@san.rr.com\fP.
+It is based on \fBnoweb.sty\fP, written by Norman Ramsey.
+
+The \fBknoweb\fP home page is at \fBhttp://www.san.rr.com/~joer/noweb\fP.
+The \fBnoweb\fP home page is at \fBhttp://www.eecs.harvard.edu/~nr/noweb\fP.
+.SH "SEE ALSO"
+.IR noweave (1),
+.IR noweb (1),
+.IR nowebstyle (7).
+@
+
+\section*{Chunks} 
+\addcontentsline{toc}{section}{\numberline{}Chunks}
+\nowebchunks
+\twocolumn[\section*{Index}]
+\addcontentsline{toc}{section}{\numberline{}Index}
+\nowebindex
+
+\addcontentsline{toc}{section}{\numberline{}References}
+\bibliographystyle{plain}
+\bibliography{mybooks,papers}
+
+
+@
+\end{document}
+

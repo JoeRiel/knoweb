@@ -1,0 +1,394 @@
+% -*- mmm-noweb-code-mode: awk-mode -*-
+ 
+\documentclass[12pt]{article}
+
+%{{{ Preamble
+
+\usepackage{mathptmx}
+\usepackage[margin=1in]{geometry}
+\usepackage[longchunks,breakcode]{knoweb}
+\usepackage{fancyvrb,syntax}
+\usepackage{ifpdf,xspace}
+
+\ifpdf
+  \usepackage[pdftex,colorlinks,backref,bookmarks
+  ,pdftitle={Awk Filters for Automatically Indexing Noweb Source Files}
+  ,pdfauthor={Joseph Riel}
+  ,pdfpagemode={UseOutline}
+  ,bookmarksopen={true}
+  ]{hyperref}
+\else
+  \usepackage[dvips,backref]{hyperref}
+\fi
+
+\newcommand{\bs}{\textbackslash}
+\newcommand{\comment}[1]{\textcolor{red}{\emph{#1}}}
+\newcommand{\package}[1]{\textsf{#1}\xspace}
+\newcommand{\file}[1]{\textsf{#1}\xspace}
+\newcommand{\env}[1]{\textsf{#1}\xspace}
+\newcommand{\cmd}[1]{\textsf{#1}\xspace}
+
+\newcommand{\noweb}{\package{noweb}\xspace}
+\newcommand{\noweave}{\package{noweave}\xspace}
+\newcommand{\notangle}{\package{notangle}\xspace}
+
+\newcommand{\gawk}{\cmd{awk}}
+
+\pagestyle{noweb}
+
+% Adjust float placement
+
+\renewcommand{\bottomfraction}{0.5}
+
+%}}}
+
+\title{Awk Filters for Automatically Indexing \\ Noweb Source Files}
+\author{Joseph S. Riel}
+\date{1 February 2008}
+
+\begin{document}
+
+\maketitle
+
+%{{{ Introduction
+
+\section{Introduction}
+\label{sec:introduction}
+
+
+The \noweb system of literate programming
+uses a pipeline approach that permits 
+users to insert filters to modify its behaviour.
+Ramsey~\cite{ramsey01:NowebHackersGuide} describes in detail the pipeline
+and its markup language.
+Distributed with the package are filters
+for automatically indexing symbols for several languages.
+
+This package contains the source for a generic filter
+for indexing any source.  Two variables must be
+assigned to do the actual indexing:
+  a regular expression that matches the line to index,
+  and an integer that selects which subgroup in 
+  the regular expression contains the symbol to index.
+Four shell scripts are provided that define the appropriate
+variables for indexing Elisp, Maple, Matlab, and Python sources.
+
+%}}}
+
+\section{Generic}
+
+The generic filter is an executable \gawk script.
+
+
+<<autodefs.generic>>=
+<<pound-bang>>
+<<generic header>>
+<<copyright>>
+BEGIN {
+    <<check for [[regex]] and [[subgroup]]>>
+    <<clear [[codeflag]]>>
+}
+<<main loop>>
+END {}
+@ 
+
+The actual ``pound-bang'' line is replaced by the \texttt{Makefile}
+so that it is correct for each installation.  
+Here we define the usual version.
+%%
+<<pound-bang>>=
+#!/usr/bin/gawk --file
+@ 
+
+<<generic header>>=
+# A gawk filter for auto-indexing a noweb source file.
+#
+# The user must define two variables, regex and subgroup.
+# Regex is a regular expression that matches an indexable 
+# line in the source code.  Subgroup is the number of the 
+# subgroup in regex that matches the name to be indexed.
+#
+# For example, to index the defun statements, which typically
+# look like
+#
+#   (defun my-nonsense () ... )
+#
+# in the lisp file my-lisp.el, you could use
+#
+#  autodefs.generic \
+#    --assign regex='\\(defun ([^ \t()]*)' \
+#    --assign subgroup=1 \
+#    my-lisp.el
+#
+@ 
+
+<<copyright>>=
+# Copyright (c) 2005-2008 by Joseph S. Riel.  All rights reserved.
+@ 
+
+
+\subsubsection{In the Beginning}
+\label{sec:beginning}
+
+First we need to check that the variables
+[[regex]] and [[subgroup]] have been assigned.
+If not, then raise an error and abort.
+
+<<check for [[regex]] and [[subgroup]]>>=
+if (!regex || !subgroup) {
+    print "awk variables 'regex' and 'subgroup' not assigned" > "/dev/stderr"
+    exit 1
+}
+@ %def regex subgroup
+
+
+Set [[codeflag]] [[false]].
+This flag is [[true]] when [[awk]] is processing a line
+in a code section.  
+It does not need to be initialized [[false]],
+the default value of an [[awk]] variable is [[0]], which corresponds to [[false]];
+however, doing so clarifies the intent.
+%%
+<<clear [[codeflag]]>>=
+codeflag = <<false>>
+@ %def codeflag
+
+
+\subsubsection{The Main Loop}
+\label{sec:main-loop}
+
+
+<<main loop>>=
+<<if changing section, update [[codeflag]]>>
+<<if not in a code section, pass-thru>>
+<<if no index in line, pass-thru>>
+{ <<insert index statement into stream>>
+  <<print original line>>
+}
+@ 
+
+
+\subsubsection{Tracking the Code Section}
+\label{sec:track-code-sect}
+
+
+If the line starts with \lit{[[@begin code]]} or \lit{[[@end code]]}
+then it indicates the beginning or end of a code section,
+respectively.  Use this to toggle [[codeflag]].
+Print the line and process the next line.
+%%
+<<if changing section, update [[codeflag]]>>=
+($0 ~ /^@(begin|end) code /) {
+    codeflag = !codeflag
+    {print;next}
+}
+@
+
+<<if not in a code section, pass-thru>>=
+!codeflag {print;next}
+@ 
+
+<<if no index in line, pass-thru>>=
+!match($0, regex, arr) {print;next}
+@ 
+
+\subsubsection{Indexing a Function Definition}
+
+Insert the \noweb statement that indexes
+the symbol into the output stream.
+%%
+<<insert index statement into stream>>=
+print "@index defn", arr[subgroup]
+@ 
+%""
+
+
+\subsubsection{Print the Original Line}
+\label{sec:print-modified-line}
+
+%%
+<<print original line>>=
+print
+@ 
+
+\subsubsection{Miscellaneous}
+\label{sec:miscellaneous}
+
+
+<<not in a code section>>=
+!codeflag
+@ 
+<<true>>=
+1
+@ 
+<<false>>=
+0
+@ 
+
+\section{Specific Filters}
+
+The specific filters are shell scripts that assign 
+[[regex]] and [[subgroup]] appropriate to the language
+and then call [[autodefs.generic]].
+The basic design looks like
+
+<<specific filter>>=
+<<assign shell variables>>
+<<assign gawk variables>>
+<<call gawk>>
+@
+
+<<assign shell variables>>=
+#!/bin/sh
+GAWK=/usr/bin/gawk
+LIB=/usr/lib/noweb
+awkscript=$LIB/autodefs.generic
+@
+
+<<call gawk>>=
+$GAWK \
+    --file $awkscript \
+    --assign regex="$regex" \
+    --assign subgroup="$subgroup" \
+    $1
+
+@
+
+\subsection{Elisp}
+
+
+<<autodefs.elisp>>=
+<<assign shell variables>>
+<<assign elisp gawk variables>>
+<<call gawk>>
+@ 
+
+
+<<assign elisp gawk variables>>=
+regex='\\(defun ([^ \t()]*)'
+subgroup=1
+@ 
+
+
+
+\subsubsection{Regular Expression}
+\label{sec:elisp:regular-expression}
+
+<<assign elisp [[regex]] and [[group]]>>=
+indexed_line_regex = "<<elisp: indexable line regex>>"
+name_group = <<elisp name group>>
+@ 
+
+While it is not a requirement that a 
+[[defun]], [[defvar]], or [[defconst]] statement
+be indented flush-left, in practice it is.
+%
+<<elisp: indexable line regex>>=
+<<noweb code line regex>><<elisp regex>>
+@
+
+<<elisp regex>>=
+\(def(<<def-options>>|ine-(<<define-options>>))[ \t](<<elisp name regex>>)
+@
+
+<<elisp name group>>=
+3
+@ 
+
+<<def-options>>=
+un|var|const|group|alias|subsubst|macro|custom|advice|image
+@ 
+
+<<define-options>>=
+minor-mode|derived-mode|abbrev|category|prefix-command|key-after
+@
+
+The \noweb [[markup]] filter 
+prefices each code line with the string \lit{@text }.
+%%
+<<noweb code line regex>>=
+^@text[ ]
+@
+
+%%
+<<elisp name regex>>=
+[^ \t\n()]+
+@
+
+
+
+\subsection{Maple}
+
+<<autodefs.maple>>=
+<<pound-bang>>
+<<maple header>>
+<<copyright>>
+BEGIN {
+    <<assign maple [[regex]] and [[group]]>>
+}
+<<main loop>>
+END {}
+@ 
+
+
+<<maple header>>=
+# An awk filter for auto-indexing a Maple noweb source file.
+@ 
+
+\subsubsection{Regular Expression}
+\label{sec:maple:regular-expression}
+
+<<assign maple [[regex]] and [[group]]>>=
+indexed_line_regex = "<<maple: indexable line regex>>"
+name_group = <<maple name group>>
+@ 
+
+<<maple: indexable line regex>>=
+<<noweb code line regex>><<maple regex>>
+@
+
+<<maple regex>>=
+(<<maple name regex>>[ \t]*:=[ \t]*(proc|module)\(
+@ 
+
+<<maple name group>>=
+1
+@ 
+
+
+%%
+<<maple name regex>>=
+(<<maple symbol regex>>(<<maple index regex>>)
+@
+<<maple symbol regex>>=
+(<<maple normal symbol regex>>|<<maple backquoted regex>>)
+@
+<<maple normal symbol regex>>=
+[a-zA-Z_][a-zA-Z_0-9]*
+@
+<<maple backquoted regex>>=
+`[^`]*`
+@
+<<maple index regex>>=
+\[[^\[\]]*\]
+@
+%""
+
+
+
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plain}
+\bibliography{papers}
+
+
+\addcontentsline{toc}{section}{Chunks}
+\section*{Chunks} 
+\nowebchunks
+
+\addcontentsline{toc}{section}{Index}
+\section*{Index}
+\nowebindex
+
+
+
+\end{document}

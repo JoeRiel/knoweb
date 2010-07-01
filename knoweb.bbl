@@ -1,0 +1,18 @@
+\begin{thebibliography}{1}
+
+\bibitem{Chicago:CMS93}
+Anonymous.
+\newblock {\em The Chicago Manual of Style}.
+\newblock University of Chicago Press, Chicago, IL, USA, 14th edition, 1993.
+
+\bibitem{Knuth:TB84}
+Donald~E. Knuth.
+\newblock {\em The {\TeX}book}.
+\newblock Ad{\-d}i{\-s}on-Wes{\-l}ey, Reading, MA, USA, 1984.
+
+\bibitem{ramsey:TeXLaTeXSupportNoweb}
+Norman Ramsey.
+\newblock {\TeX{} and \LaTeX{} support for \texttt{noweb}}.
+\newblock {Distributed with \texttt{noweb} package}.
+
+\end{thebibliography}

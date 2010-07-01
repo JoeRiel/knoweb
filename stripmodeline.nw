@@ -1,0 +1,119 @@
+% -*- mmm-noweb-code-mode: awk-mode -*-
+
+\documentclass[12pt]{article}
+\usepackage{mathptmx}
+\usepackage[margin=1in]{geometry}
+\usepackage[footnotesizecode,longchunks,breakcode]{knoweb}
+\usepackage{fancyvrb,syntax}
+\usepackage{rcs,url}
+\usepackage{ifpdf,xspace,color}
+
+\ifpdf
+  \usepackage[pdftex,colorlinks,backref,bookmarks
+  ,pdftitle={Noweb Filters for Typesetting Comments in Code Chunks}
+  ,pdfauthor={Joseph Riel}
+  ,pdfpagemode={UseOutline}
+  ,bookmarksopen={true}
+  ]{hyperref}
+\else
+  \usepackage[dvips,backref]{hyperref}
+\fi
+
+\newcommand{\noweb}{\texttt{noweb}}
+\newcommand{\awk}{\texttt{awk}}
+
+\title{A Simple Noweb Filter \\ for Stripping an Emacs Mode Line}
+\author{Joseph S. Riel}
+\date{24 November 2004}
+
+\pagestyle{noweb}
+\setcounter{tocdepth}{5}     % include all sections in toc
+
+\begin{document}
+
+\maketitle
+
+When using Emacs with \texttt{noweb-mode}\footnote{
+  \texttt{mmm-mode} is also useful.}
+to edit a \noweb\cite{ramsey01:NowebHackersGuide} source file
+it is common to insert a mode-line at the top of the file
+to assign the major mode for the code sections.
+The \texttt{noweave} program, alas, copies this mode-line into the output \TeX{} file.  
+This is undesireable because, when visiting the \TeX{} file in Emacs,
+the \noweb{} mode is then automatically applied to it.
+
+@
+Assign an awk script that strips a mode line from the \noweb{} stream.
+<<stripmodeline>>=
+<<header>>
+( <<not appropriate line>> || <<line is not an Emacs mode line>> ) {print}
+@ 
+
+@
+The integer variable [[FNR]] is the ``file record number'';
+it starts at~1 and is incremented each time a new record (line)
+is read.
+The first line of the source document, which is where the mode-line will be,
+appears as the third line of the output of the \texttt{markup} filter
+(\noweb's frontend).  
+
+<<not appropriate line>>=
+FNR != 3
+@
+
+@
+Because the mode-line is part of a document chunk, 
+``\verb*+@text +'' is prepended to the line.
+The rest of the regex matches a typical mode-line.
+
+<<line is not an Emacs mode line>>=
+$0 !~ /^@text % -\*- mode:/
+@
+%$
+
+@
+The ``pound-bang'' line is inserted by the \texttt{Makefile};
+it must point to the location of \texttt{awk}.
+%%
+<<header>>=
+# Noweb filter for stripping an Emacs mode line from the stream.
+
+@
+
+<<manpage: stripmodeline.1>>=
+.TH "stripmodeline" 1
+.SH NAME
+.B stripmodeline \- noweb filter for removing an Emacs mode line
+.SH SYNOPSIS
+.B noweave -filter stripmodeline ...
+.SH DESCRIPTION
+The \fBstripmodeline\fP filter removes the Emacs mode line
+from the stream.
+This is useful when using \fBnoweave\fP to generate a \fITeX\fP file;
+visiting the generated file in Emacs does not invoke \fInoweb-mode\fP.
+
+The mode line, when present, is the first line of the file
+and has the general form
+
+.B "% -*- mmm-noweb-code-mode: C-mode -*-"
+.SH EXAMPLES
+.B noweave -filter stripmodeline myfile.nw > myfile.tex
+.SH AUTHOR
+Joseph Riel, \fBjoer@san.rr.com\fP.
+.SH "SEE ALSO"
+.IR noweave (1),
+.IR noweb (1),
+.IR nowebfilters (7),
+.IR emacs (1).
+@
+
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plain}
+\bibliography{papers}
+
+%% \section{Chunks} 
+%% \nowebchunks
+%% \section{Index}
+%% \nowebindex
+
+\end{document}
