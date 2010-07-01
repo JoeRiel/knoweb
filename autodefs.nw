@@ -79,7 +79,6 @@ variables for indexing Elisp, Maple, Matlab, and Python sources.
 
 The generic filter is an executable \gawk script.
 
-
 <<autodefs.generic>>=
 <<pound-bang>>
 <<generic header>>
