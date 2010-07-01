@@ -18,4 +18,23 @@ LaTeX Styles:
 -------------
 knoweb.sty : improvement of noweb.sty
 
+
+Installation
+------------
+
+The source for knoweb.sty, and associated gawk scripts (for the filters)
+are noweb source files.  To tangle them, do
+
+ make
+
+To create the pdfs that document the source, do
+
+ make pdf
+
+To install everything, check that the Makefile puts things
+where you expect, then do
+
+ make install
+
+
  -- Joe Riel <joer@san.rr.com>, Tue,  1 Jan 2008 16:56:14 -0800
