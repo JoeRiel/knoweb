@@ -7,15 +7,16 @@ INSTALL_PROG = $(INSTALL)
 INSTALL_DATA = $(INSTALL) --mode=644
 GAWK = $(shell which gawk)
 
+include help-system.mak
+
 setpath = PATH=.:$$PATH
 PKG=$(notdir $(abspath .))
-# $(info Makefile for $(PKG))
+
 
 styles   = $(addsuffix .sty,knoweb typesetcomments)
 filters  = indexsymbols inlinecomments multilinecomments stripmodeline
-#autodefs = $(addprefix autodefs.,generic elisp maple matlab python)
-autodefs = $(addprefix autodefs.,generic elisp maple)
-pdfs     = $(addsuffix .pdf,knoweb indexsymbols stripmodeline typesetcomments $(autodefs))
+autodefs = $(addprefix autodefs.,generic elisp maple matlab python)
+pdfs     = $(addsuffix .pdf,knoweb indexsymbols stripmodeline typesetcomments autodefs)
 bbls     = $(addsuffix .bbl,$(basename $(pdfs)))
 man1pages = indexsymbols.1 inlinecomments.1 multilinecomments.1 stripmodeline.1 
 man7pages = knowebstyle.7
@@ -25,6 +26,8 @@ installs = $(filters) $(styles) $(manpages) $(autodefs)
 
 .PHONY: all pdf targets
 all: $(installs)
+
+pdf: $(call print-help,pdf, generate the pdfs)
 pdf: $(pdfs)
 
 targets:
@@ -33,13 +36,13 @@ targets:
 
 # {{{ filters
 
-# 1. Insert a pound-bang line that specifies the location of gawk.
-# 2. Append the script extracted from the noweb source.
+# 1. Extract the script from the noweb source.
+# 2. Replace /usr/bin/gawk with actual location of gawk.
 # 3. Make the script executable.
 
 define addawk
-   echo "#!$(GAWK) --file" > $@
-   notangle -R$@ $< >> $@
+   notangle -R$@ $< > $@
+   sed "1s|/usr/bin/gawk|$(GAWK)|" -i $@
    chmod +x $@
 endef
 
@@ -211,6 +214,7 @@ nada: $(save)
 knoweb.zip: $(save)
 	zip $@ $?
 
+dist: $(call print-help,dist, create $(PKG).tar.gz)
 dist: $(PKG).tar.gz
 
 $(PKG).tar.gz: $(save)
@@ -221,13 +225,19 @@ $(PKG).tar.gz: $(save)
 # }}}
 # {{{ clean
 
+help: $(call print-separator)
+
 .PHONY: clean cleanmost distclean maintainer-clean
+
+clean: $(call print-help,clean, remove tex auxiliary files)
 clean: 
 	$(RM) *~ *.dvi *.aux *.log *.blg *.toc *.out *.brf
 
+cleanmost: $(call print-help,cleanmost, clean and remove more files)
 cleanmost: clean
 	$(RM) show-markup simple-markup show-indexsymbols simple-indexsymbols show-diff simple-diff
 
+distclean: $(call print-help,distclean, cleanmost and remove all generated files)
 distclean: cleanmost
 	$(RM) $(filters) $(autodefs) $(manpages) *.pdf *.el *.tex *.sty
 
