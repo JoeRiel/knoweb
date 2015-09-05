@@ -5,7 +5,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage[footnotesizecode,longchunks,breakcode]{knoweb}
 \usepackage{fancyvrb,syntax}
-\usepackage{rcs,url}
+\usepackage{url}
 \usepackage{ifpdf,xspace,color}
 
 \ifpdf
@@ -18,10 +18,6 @@
 \else
   \usepackage[dvips,backref]{hyperref}
 \fi
-
-\RCS $Revision: 1.8 $
-\RCS $Date: 2005/03/15 03:14:45 $
-\renewcommand{\today}{\RCSRawDate}
 
 % new commands
 
@@ -40,11 +36,7 @@
 
 \title{Noweb Filters for Typesetting Comments \\ in Code Chunks}
 \author{Joseph S. Riel \quad \href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
-\date{\normalsize
-  Revision: \RCSRevision
-  \qquad
-  Last Commit: \RCSDate \ UTC
-}
+\date{\normalsize 5 September 2015}
 \maketitle
 
 

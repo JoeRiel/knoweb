@@ -126,7 +126,6 @@ Here we define the usual version.
 # This file was generated from the noweb source file autodefs.nw.
 # The source documentation is in autodefs.pdf.
 @
-
 <<copyright>>=
 # Copyright (c) 2005-2015 by Joseph S. Riel.  All rights reserved.
 @ 

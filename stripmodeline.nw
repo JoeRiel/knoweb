@@ -5,7 +5,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage[footnotesizecode,longchunks,breakcode]{knoweb}
 \usepackage{fancyvrb,syntax}
-\usepackage{rcs,url}
+\usepackage{url}
 \usepackage{ifpdf,xspace,color}
 
 \ifpdf
