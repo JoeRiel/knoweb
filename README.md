@@ -36,7 +36,7 @@ Installation
 The source for knoweb.sty, and associated gawk scripts (for the filters)
 are noweb source files.  To tangle them, do
 
- `make all`
+ `make scripts`
 
 To create the pdfs that document the source, do
 

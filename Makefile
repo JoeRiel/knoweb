@@ -25,9 +25,11 @@ manpages  = $(man1pages) $(man7pages)
 installs = $(filters) $(styles) $(manpages) $(autodefs)
 
 .PHONY: all pdf targets
-all: $(installs)
 
-pdf: $(call print-help,pdf, generate the pdfs)
+scripts: $(call print-help,scripts,	extract all scripts)
+scripts: $(installs)
+
+pdf: $(call print-help,pdf,	generate the pdfs)
 pdf: $(pdfs)
 
 targets:
@@ -54,7 +56,6 @@ $(autodefs): autodefs.nw
 
 inlinecomments multilinecomments: typesetcomments.nw
 	$(call build)
-
 
 # }}}
 # {{{ documentation
@@ -177,24 +178,25 @@ installdirs:
 
 .PHONY: install install-pdf
 
-install: $(installs) installdirs
+install: $(call print-help,install,	install everything) 
+install: $(installs) $(pdfs) installdirs
 	$(INSTALL_PROG) $(filters) $(bindir)
 	$(INSTALL_PROG) $(autodefs) $(nwdir)
 	$(INSTALL_DATA) $(styles)   $(texdir)
-	$(INSTALL_DATA) README COPYRIGHT $(docdir)
+	$(INSTALL_DATA) README.md COPYRIGHT $(pdfs) $(docdir)
 	-$(INSTALL_DATA) $(man1pages) $(mandir)/man1
 	-$(INSTALL_DATA) $(man7pages) $(mandir)/man7
 
-install-pdf: $(pdfs) installdirs
-	$(INSTALL_DATA) $(pdfs) README $(docdir)
 
 # }}}
 # {{{ uninstall
 
 .PHONY: uninstall
+
+uninstall: $(call print-help,uninstall,uninstall everything)
 uninstall:
 	$(RM) $(addprefix $(bindir)/,$(filters))
-	$(RM) $(addprefix $(docdir)/,$(pdfs) README)
+	$(RM) $(addprefix $(docdir)/,$(pdfs) README.md)
 	$(RM) $(addprefix $(texdir)/,$(styles))
 	$(RM) $(addprefix $(nwdir)/,$(autodefs))
 	$(RM) $(addprefix $(mandir)/man1/,$(man1pages))
@@ -203,18 +205,17 @@ uninstall:
 
 # {{{ dist
 
+help: $(call print-separator)
+
 .PHONY: dist
 
 nwsrc = $(addsuffix .nw,knoweb indexsymbols simple stripmodeline typesetcomments $(autodefs))
-save = $(nwsrc) $(bbls) README COPYRIGHT Makefile
-
-nada: $(save)
-#$(info $(save))
+save = $(nwsrc) $(bbls) README.md COPYRIGHT Makefile
 
 knoweb.zip: $(save)
 	zip $@ $?
 
-dist: $(call print-help,dist, create $(PKG).tar.gz)
+dist: $(call print-help,dist,	create $(PKG).tar.gz)
 dist: $(PKG).tar.gz
 
 $(PKG).tar.gz: $(save)
@@ -229,15 +230,15 @@ help: $(call print-separator)
 
 .PHONY: clean cleanmost distclean maintainer-clean
 
-clean: $(call print-help,clean, remove tex auxiliary files)
+clean: $(call print-help,clean,	remove tex auxiliary files)
 clean: 
 	$(RM) *~ *.dvi *.aux *.log *.blg *.toc *.out *.brf
 
-cleanmost: $(call print-help,cleanmost, clean and remove more files)
+cleanmost: $(call print-help,cleanmost,clean and remove most files)
 cleanmost: clean
 	$(RM) show-markup simple-markup show-indexsymbols simple-indexsymbols show-diff simple-diff
 
-distclean: $(call print-help,distclean, cleanmost and remove all generated files)
+distclean: $(call print-help,distclean,cleanmost and remove all generated files)
 distclean: cleanmost
 	$(RM) $(filters) $(autodefs) $(manpages) *.pdf *.el *.tex *.sty
 
