@@ -123,7 +123,8 @@ Here we define the usual version.
 @ 
 
 <<generated file warning>>=
-# This file is generated from the noweb source file autodefs.nw.
+# This file was generated from the noweb source file autodefs.nw.
+# The source documentation is in autodefs.pdf.
 @
 
 <<copyright>>=
@@ -147,11 +148,10 @@ if (!regex || !subgroup) {
 
 
 Set [[codeflag]] [[false]].
-This flag is [[true]] when [[awk]] is processing a line
-in a code section.  
-It does not need to be initialized [[false]],
-the default value of an [[awk]] variable is [[0]], which corresponds to [[false]];
-however, doing so clarifies the intent.
+This flag is [[true]] when [[awk]] is processing a line in a code section.  
+It does not need to be initialized [[false]] 
+because the default value of an [[awk]] variable is [[0]], which corresponds to [[false]];
+however, doing so is clearer.
 %%
 <<clear [[codeflag]]>>=
 codeflag = <<false>>
@@ -176,9 +176,9 @@ codeflag = <<false>>
 \label{sec:track-code-sect}
 
 
-If the line starts with \lit{[[@begin code]]} or \lit{[[@end code]]}
-then it indicates the beginning or end of a code section,
-respectively.  Use this to toggle [[codeflag]].
+A line starting with \lit{[[@begin code]]} or \lit{[[@end code]]}
+indicates the beginning or end of a code section, respectively.  
+Use this to toggle [[codeflag]].
 Print the line and process the next line.
 %%
 <<if changing section, toggle [[codeflag]]>>=
