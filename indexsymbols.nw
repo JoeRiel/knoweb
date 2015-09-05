@@ -172,13 +172,18 @@ BEGIN {<<assign defaults>>}
 END {}
 @ 
 
-The ``pound-bang'' line is inserted by the \texttt{Makefile}
-so that it is correct for each installation.
 %%
 <<header>>=
+<<pound-bang>>
 # Noweb filter for indexing symbols.
+# This file was generated from indexsymbols.nw.
+# The source documentation is in indexsymbols.pdf.
+# A manpage is indexsymbols.1.
 @ 
 
+<<pound-bang>>=
+#!/usr/bin/gawk --file
+@
 
 \subsection{In the Beginning}
 \label{sec:beginning}
