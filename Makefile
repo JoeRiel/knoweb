@@ -40,20 +40,20 @@ targets:
 # 2. Replace /usr/bin/gawk with actual location of gawk.
 # 3. Make the script executable.
 
-define addawk
+define build
    notangle -R$@ $< > $@
    sed "1s|/usr/bin/gawk|$(GAWK)|" -i $@
    chmod +x $@
 endef
 
 $(autodefs): autodefs.nw
-	$(call addawk)
+	$(call build)
 
 %: %.nw
-	$(call addawk)
+	$(call build)
 
 inlinecomments multilinecomments: typesetcomments.nw
-	$(call addawk)
+	$(call build)
 
 
 # }}}
