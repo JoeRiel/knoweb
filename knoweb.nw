@@ -12,7 +12,7 @@
 \ifpdf
 \usepackage[pdftex,colorlinks,backref,bookmarks
   ,pdftitle={knoweb.sty}
-  ,pdfauthor={Joseph Riel}
+  ,pdfauthor={Joseph S. Riel}
   ,pdfpagemode={UseOutline}
   ,bookmarksopen={true}
   ]{hyperref}
@@ -47,7 +47,7 @@
 
 \title{\file{knoweb.sty}\\
   A \LaTeX{} package for \noweb}
-\author{Joseph Riel\quad\href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
+\author{Joseph S. Riel\quad\href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
 
 \date{\normalsize 5 September 2015}
 
