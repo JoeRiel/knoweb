@@ -15,7 +15,7 @@ PKG=$(notdir $(abspath .))
 
 styles   = $(addsuffix .sty,knoweb typesetcomments)
 filters  = indexsymbols inlinecomments multilinecomments stripmodeline
-autodefs = $(addprefix autodefs.,generic elisp maple matlab python)
+autodefs = $(addprefix autodefs.,elisp maple matlab python)
 pdfs     = $(addsuffix .pdf,knoweb indexsymbols stripmodeline typesetcomments autodefs)
 bbls     = $(addsuffix .bbl,$(basename $(pdfs)))
 man1pages = indexsymbols.1 inlinecomments.1 multilinecomments.1 stripmodeline.1 
@@ -165,7 +165,9 @@ bindir = $(DESTDIR)$(prefix)/bin
 docdir = $(DESTDIR)$(prefix)/share/doc/noweb-extras
 mandir = $(DESTDIR)$(prefix)/share/man
 mandirs = $(mandir)/man1 $(mandir)/man7
-nwdir   = /usr/lib/noweb
+
+# The autodefs filters have to go with the standard autodefs filters
+nwdir = /usr/lib/noweb
 
 .PHONY: installdirs
 
