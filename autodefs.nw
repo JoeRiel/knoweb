@@ -44,7 +44,7 @@
 
 \title{Awk Filters for Automatically Indexing \\ Noweb Source Files}
 \author{Joseph S. Riel}
-\date{5 September 2015}
+\date{6 September 2015}
 
 \begin{document}
 
@@ -64,12 +64,8 @@ and its markup language.
 Distributed with the package are filters
 for automatically indexing symbols for several languages.
 
-This package contains the source for filters for indexing Elisp, Maple, Matlab, and Python sources.
-It also contains a generic filter for indexing any source.  
-For the generic filter, two variables must be assigned:
-  a regular expression that matches the line to index,
-  and an integer that selects which subgroup in 
-  the regular expression contains the symbol to index.
+This package contains the source for filters for indexing 
+Elisp, Maple, Matlab, and Python sources.
 
 %}}}
 
@@ -77,13 +73,18 @@ For the generic filter, two variables must be assigned:
 \label{sec:installation}
 
 The generated filters, which have names \texttt{autodefs.}\emph{filter},
-must be installed in the subdirectory \texttt{lib} under the
-directory where \noweb is installed, so typically in \texttt{/usr/bin/noweb/lib}.
+must be installed in the directory with the standard autodefs filters.
+On my Debian installation that is \texttt{/usr/lib/noweb}.  
+Use the following command to display the installed filters.
+
+\begin{verbatim}
+  noweave -showautodefs
+\end{verbatim}
 
 \section{Usage}
 \label{sec:usage}
 
-These filters are used with the \texttt{-autodefs} \emph{filter} option of the \noweave command;
+Use these filters with the \texttt{-autodefs} \emph{filter} option of the \noweave command;
 see the \noweave manpage for details.  To be useful, the \texttt{-index} option
 should be passed to \noweave, after the filter.  For example.
 
@@ -91,18 +92,20 @@ should be passed to \noweave, after the filter.  For example.
   noweave -delay -autodefs maple -index Sample.nw > Sample.tex
 \end{verbatim}
 
-The index is generated in the noweb file with the command \verb+\nowebindex+.
+\section{Elisp Filter}
 
-\section{Generic Filter}
+Assign the code for the Elisp filter.
+The other filters reuse most of the chunks,
+redefining the header, the regular expression, and the matching subgroup.
 
-<<autodefs.generic>>=
+<<autodefs.elisp>>=
 <<pound-bang>>
-<<generic header>>
+<<elisp header>>
 <<generated file warning>>
 <<copyright>>
 BEGIN {
-    <<check for [[regex]] and [[subgroup]]>>
     <<clear [[codeflag]]>>
+    <<assign elisp [[regex]] and [[subgroup]]>>
 }
 <<main loop>>
 END {}
@@ -116,26 +119,8 @@ Here we define the usual version.
 #!/usr/bin/gawk --file
 @ 
 
-<<generic header>>=
-# A gawk filter for auto-indexing a noweb source file.
-#
-# The user must define two variables, regex and subgroup.
-# Regex is a regular expression that matches an indexable 
-# line in the source code.  Subgroup is the number of the 
-# subgroup in regex that matches the name to be indexed.
-#
-# For example, to index the defun statements, which typically
-# look like
-#
-#   (defun my-nonsense () ... )
-#
-# in the lisp file my-lisp.el, you could use
-#
-#  autodefs.generic \
-#    --assign regex='\\(defun ([^ \t()]*)' \
-#    --assign subgroup=1 \
-#    my-lisp.el
-#
+<<elisp header>>=
+# An awk filter for auto-indexing an Elisp noweb source file.
 @ 
 
 <<generated file warning>>=
@@ -150,18 +135,6 @@ Here we define the usual version.
 \subsection{In the Beginning}
 \label{sec:beginning}
 
-First we need to check that the variables
-[[regex]] and [[subgroup]] have been assigned.
-If not, then raise an error and abort.
-
-<<check for [[regex]] and [[subgroup]]>>=
-if (!regex || !subgroup) {
-    print "awk variables 'regex' and 'subgroup' not assigned" > "/dev/stderr"
-    exit 1
-}
-@ %def regex subgroup
-
-
 Set [[codeflag]] [[false]].
 This flag is [[true]] when [[awk]] is processing a line in a code section.  
 It does not need to be initialized [[false]] 
@@ -171,6 +144,55 @@ however, doing so is clearer.
 <<clear [[codeflag]]>>=
 codeflag = <<false>>
 @ %def codeflag
+
+\subsubsection{Assign Regular Expression}
+\label{sec:elisp:regular-expression}
+
+Assign a regular expression, [[regex]], that matches
+a code line with an indexable lisp symbol.
+Assign the awk variable [[subgroup]] the number
+of the subgroup in [[regex]] that matches the symbol.
+
+<<assign elisp [[regex]] and [[subgroup]]>>=
+regex = "<<noweb code line regex>><<elisp regex>>"
+subgroup = 3
+@ 
+
+The \noweb [[markup]] filter 
+prefices each code line with the string \lit{@text\textvisiblespace}.
+Include any additional white space following it.
+%%
+<<noweb code line regex>>=
+^@text<<mws>>
+@
+
+<<elisp regex>>=
+\\(def(<<def-options>>|ine-(<<define-options>>))<<mws>>(<<elisp name regex>>)
+@
+
+<<def-options>>=
+un|var|const|group|alias|subsubst|macro|custom|advice|image
+@ 
+
+<<define-options>>=
+minor-mode|derived-mode|abbrev|category|prefix-command|key-after
+@
+
+
+%%
+<<elisp name regex>>=
+[^ \t\n()]+
+@
+
+Optional white space.
+<<ows>>=
+[ \t]*
+@
+
+Mandatory white space.
+<<mws>>=
+[ \t]+
+@
 
 
 \subsection{The Main Loop}
@@ -207,9 +229,15 @@ Print the line and process the next line.
 !codeflag {print;next}
 @ 
 
+\subsection{Checking for an Indexable Symbol}
+\label{sec:check-an-index}
+
+Match the current line, [[$0]], against [[regex]]
+and store the results in [[arr]].  
+If the line does not match, print the line and process the next line.
 <<if no index in line, pass-thru>>=
 !match($0, regex, arr) {print;next}
-@ 
+@ %def arr
 
 \subsection{Indexing a Function Definition}
 
@@ -230,6 +258,7 @@ print "@index defn", arr[subgroup]
 print
 @ 
 
+
 \subsection{Miscellaneous}
 \label{sec:miscellaneous}
 
@@ -243,72 +272,6 @@ print
 <<false>>=
 0
 @ 
-
-\section{Elisp Filter}
-
-<<autodefs.elisp>>=
-<<pound-bang>>
-<<elisp header>>
-<<generated file warning>>
-<<copyright>>
-BEGIN {
-  <<clear [[codeflag]]>>
-  <<assign elisp [[regex]] and [[subgroup]]>>
-}
-<<main loop>>
-END {}
-@ 
-
-<<elisp header>>=
-# An awk filter for auto-indexing an Elisp noweb source file.
-@ 
-
-
-\subsection{Regular Expression}
-\label{sec:elisp:regular-expression}
-
-<<assign elisp [[regex]] and [[subgroup]]>>=
-regex = "<<elisp: indexable line regex>>"
-subgroup = <<elisp name group>>
-@ 
-
-While it is not a requirement that a 
-[[defun]], [[defvar]], or [[defconst]] statement
-be indented flush-left, in practice it is.
-%
-<<elisp: indexable line regex>>=
-<<noweb code line regex>><<elisp regex>>
-@
-
-<<elisp regex>>=
-\\(def(<<def-options>>|ine-(<<define-options>>))<<mws>>(<<elisp name regex>>)
-@
-
-<<elisp name group>>=
-3
-@ 
-
-<<def-options>>=
-un|var|const|group|alias|subsubst|macro|custom|advice|image
-@ 
-
-<<define-options>>=
-minor-mode|derived-mode|abbrev|category|prefix-command|key-after
-@
-
-The \noweb [[markup]] filter 
-prefices each code line with the string \lit{@text }.
-%%
-<<noweb code line regex>>=
-^@text<<mws>>
-@
-
-%%
-<<elisp name regex>>=
-[^ \t\n()]+
-@
-
-
 
 \section{Maple Filter}
 
@@ -334,20 +297,12 @@ END {}
 \label{sec:maple:regular-expression}
 
 <<assign maple [[regex]] and [[subgroup]]>>=
-regex = "<<maple: indexable line regex>>"
-subgroup = <<maple name group>>
+regex = "<<noweb code line regex>><<maple regex>>"
+subgroup = 3
 @ 
-
-<<maple: indexable line regex>>=
-<<noweb code line regex>><<maple regex>>
-@
 
 <<maple regex>>=
 <<export or local>><<maple name>><<optional type>><<ows>>:=<<ows>>(proc|module)<<ows>>\\(
-@ 
-
-<<maple name group>>=
-3
 @ 
 
 Optional qualifier.
@@ -377,18 +332,6 @@ Optional qualifier.
 (<<ows>>::<<ows>><<maple normal symbol>>)?
 @
 
-\subsubsection{White Space}
-\label{sec:white-space}
-
-Optional white space.
-<<ows>>=
-[ \t]*
-@
-
-Mandatory white space.
-<<mws>>=
-[ \t]+
-@
 
 
 \section{Matlab Filter}
@@ -415,13 +358,9 @@ END {}
 \label{sec:matlab:regular-expression}
 
 <<assign matlab [[regex]] and [[subgroup]]>>=
-regex = "<<matlab: indexable line regex>>"
-subgroup = <<matlab subgroup>>
+regex = "<<noweb code line regex>><<matlab regex>>"
+subgroup = 1
 @ 
-
-<<matlab: indexable line regex>>=
-<<noweb code line regex>><<matlab regex>>
-@
 
 <<matlab regex>>=
 function[ \t][^=]+=<<ows>>(<<matlab function name regex>>)
@@ -430,10 +369,6 @@ function[ \t][^=]+=<<ows>>(<<matlab function name regex>>)
 <<matlab function name regex>>=
 [a-zA-Z][a-zA-Z_0-9]*
 @
-
-<<matlab subgroup>>=
-1
-@ 
 
 \section{Python Filter}
 \label{sec:python-filter}
@@ -459,13 +394,9 @@ END {}
 \label{sec:python:regular-expression}
 
 <<assign python [[regex]] and [[subgroup]]>>=
-regex = "<<python: indexable line regex>>"
-subgroup = <<python subgroup>>
+regex = "<<noweb code line regex>><<python regex>>"
+subgroup = 1
 @ 
-
-<<python: indexable line regex>>=
-<<noweb code line regex>><<python regex>>
-@
 
 <<python regex>>=
 def<<mws>>(<<python function name regex>>)
@@ -478,10 +409,6 @@ Additional characters may be letters, digits, or underscores.
 <<python function name regex>>=
 [a-zA-Z_][a-zA-Z_0-9]*
 @
-
-<<python subgroup>>=
-1
-@ 
 
 \addcontentsline{toc}{section}{References}
 \bibliographystyle{plain}
