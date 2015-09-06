@@ -1,4 +1,5 @@
 auto/
+samples/
 autodefs.elisp
 autodefs.generic
 autodefs.maple
