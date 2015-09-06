@@ -7,22 +7,18 @@
 \usepackage{mathptmx}
 \usepackage[smallcode,longchunks,shortxref]{knoweb}
 \usepackage{syntax,xspace,paralist}
-\usepackage{rcs}   % from CTAN (macros/latex/contrib/rcs/rcs.sty), by Joachim Schrod
 \usepackage{color}
 \usepackage{ifpdf}
 \ifpdf
 \usepackage[pdftex,colorlinks,backref,bookmarks
   ,pdftitle={knoweb.sty}
-  ,pdfauthor={Joseph Riel}
+  ,pdfauthor={Joseph S. Riel}
   ,pdfpagemode={UseOutline}
   ,bookmarksopen={true}
   ]{hyperref}
 \else
   \usepackage[dvips,backref]{hyperref}
 \fi
-
-\RCS $Revision: 1.31 $
-\RCS $Date: 2005/05/04 04:13:58 $
 
 \pagestyle{noweb}
 
@@ -51,13 +47,9 @@
 
 \title{\file{knoweb.sty}\\
   A \LaTeX{} package for \noweb}
-\author{Joseph Riel\quad\href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
+\author{Joseph S. Riel\quad\href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
 
-\date{\normalsize
-  Revision: \RCSRevision
-  \qquad
-  Last Commit: \RCSDate
-}
+\date{\normalsize 5 September 2015}
 
 
 \begin{document}

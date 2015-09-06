@@ -5,7 +5,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage[footnotesizecode,longchunks,breakcode]{knoweb}
 \usepackage{fancyvrb,syntax}
-\usepackage{rcs,url}
+\usepackage{url}
 \usepackage{ifpdf,xspace,color}
 
 \ifpdf
@@ -24,7 +24,7 @@
 
 \title{A Simple Noweb Filter \\ for Stripping an Emacs Mode Line}
 \author{Joseph S. Riel}
-\date{24 November 2004}
+\date{15 September 2015}
 
 \pagestyle{noweb}
 \setcounter{tocdepth}{5}     % include all sections in toc
@@ -43,7 +43,7 @@ This is undesireable because, when visiting the \TeX{} file in Emacs,
 the \noweb{} mode is then automatically applied to it.
 
 @
-Assign an awk script that strips a mode line from the \noweb{} stream.
+Assign an \awk{} script that strips a mode line from the \noweb{} stream.
 <<stripmodeline>>=
 <<header>>
 ( <<not appropriate line>> || <<line is not an Emacs mode line>> ) {print}
@@ -67,23 +67,49 @@ Because the mode-line is part of a document chunk,
 The rest of the regex matches a typical mode-line.
 
 <<line is not an Emacs mode line>>=
-$0 !~ /^@text % -\*- mode:/
+$0 !~ /<<noweb code line regex>><<emacs mode-line regex>>/
+@
+<<noweb code line regex>>=
+^@text[ ]
+@
+
+<<emacs mode-line regex>>=
+<<TeX comment>><<mode-line starter>>
+@
+
+The \TeX{} comment-starter is ``\%''.
+<<TeX comment>>=
+%+[ \t]*
+@
+
+An Emacs mode-line starts with ``\verb+-*-+''.
+<<mode-line starter>>=
+-\*-
 @
 %$
 
 @
-The ``pound-bang'' line is inserted by the \texttt{Makefile};
-it must point to the location of \texttt{awk}.
-%%
 <<header>>=
-# Noweb filter for stripping an Emacs mode line from the stream.
-
+<<pound-bang>>
+# A Noweb filter for stripping an Emacs mode line from the stream.
+# This file was generated from stripmodeline.nw.
+# The source documentation is in stripmodeline.pdf.
+# A manpage is striplinemode.1.
 @
 
+The ``pound-bang'' line informs the shell that this is a \awk{} script.
+The [[--file]] option to \awk{} tells it that this file is its source script.
+%%
+<<pound-bang>>=
+#!/usr/bin/gawk --file
+@
+%%
+
+@
 <<manpage: stripmodeline.1>>=
 .TH "stripmodeline" 1
 .SH NAME
-.B stripmodeline \- noweb filter for removing an Emacs mode line
+.B stripmodeline \- noweb filter for removing an Emacs mode-line
 .SH SYNOPSIS
 .B noweave -filter stripmodeline ...
 .SH DESCRIPTION
