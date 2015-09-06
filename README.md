@@ -2,7 +2,7 @@
 Noweb Extensions
 ================
 
-This package provides extensions to the noweb package.
+This package provides extensions to the [noweb](https://github.com/nrnrnr/noweb) package.
 
 LaTeX Styles
 ------------
