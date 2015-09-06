@@ -24,7 +24,7 @@
 
 \title{A Simple Noweb Filter \\ for Stripping an Emacs Mode Line}
 \author{Joseph S. Riel}
-\date{24 November 2004}
+\date{15 September 2015}
 
 \pagestyle{noweb}
 \setcounter{tocdepth}{5}     % include all sections in toc
