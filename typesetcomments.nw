@@ -36,7 +36,7 @@
 
 \title{Noweb Filters for Typesetting Comments \\ in Code Chunks}
 \author{Joseph S. Riel \quad \href{mailto:joer@san.rr.com}{\texttt{joer@san.rr.com}}}
-\date{\normalsize 5 September 2015}
+\date{\normalsize 6 September 2015}
 \maketitle
 
 
@@ -171,7 +171,7 @@ the current line is in a code section.
 commentre   = "#!"
 commentshow = "# "
 codeflag = <<false>>
-@ %def commentre commentshow codeflage
+@ %def commentre commentshow codeflag
 
 
 
@@ -444,7 +444,7 @@ function endprintcomment(str)
   else
     { printcode(substr(str,1)) }
 }
-@ %def endcomment
+@ %def endprintcomment
 
 
 
