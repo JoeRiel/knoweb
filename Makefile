@@ -163,9 +163,9 @@ prefix ?= /usr/local
 texdir = $(DESTDIR)$(prefix)/share/texmf/tex/latex
 bindir = $(DESTDIR)$(prefix)/bin
 docdir = $(DESTDIR)$(prefix)/share/doc/noweb-extras
-nwdir  = $(DESTDIR)$(prefix)/lib/noweb
 mandir = $(DESTDIR)$(prefix)/share/man
 mandirs = $(mandir)/man1 $(mandir)/man7
+nwdir   = /usr/lib/noweb
 
 .PHONY: installdirs
 
