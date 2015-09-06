@@ -2,7 +2,12 @@
 Noweb Extensions
 ================
 
-This package, noweb-extra, provides extensions to the noweb package.
+This package provides extensions to the noweb package.
+
+LaTeX Styles
+------------
+
+* **knoweb.sty** : improvement of noweb.sty.
 
 Miscellaneous Filters
 ---------------------
@@ -25,11 +30,6 @@ but requires a regular expression.
 * **autodefs.maple**
 * **autodefs.matlab**
 * **autodefs.python**
-
-LaTeX Styles
-------------
-
-* **knoweb.sty** : improvement of noweb.sty
 
 Installation
 ------------
