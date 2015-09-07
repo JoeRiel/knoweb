@@ -22,11 +22,8 @@ Autodef Filters
 
 Generate noweb indices from noweb source files.
 The following gawk scripts generate indices for particular languages.
-The **autodefs.generic** script can be used with an arbitrary language
-but requires a regular expression.
 
 * **autodefs.elisp**
-* **autodefs.generic**
 * **autodefs.maple**
 * **autodefs.matlab**
 * **autodefs.python**
@@ -34,7 +31,7 @@ but requires a regular expression.
 Installation
 ------------
 
-The source for knoweb.sty, and associated gawk scripts (for the filters)
+The source for `knoweb.sty`, and associated gawk scripts (for the filters)
 are noweb source files.  To tangle them, do
 
  `make scripts`
