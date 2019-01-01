@@ -23,6 +23,7 @@ Autodef Filters
 Generate noweb indices from noweb source files.
 The following gawk scripts generate indices for particular languages.
 
+* **autodefs.bash**
 * **autodefs.elisp**
 * **autodefs.maple**
 * **autodefs.matlab**

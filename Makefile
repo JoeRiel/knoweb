@@ -15,7 +15,7 @@ PKG=$(notdir $(abspath .))
 
 styles   = $(addsuffix .sty,knoweb typesetcomments)
 filters  = indexsymbols inlinecomments multilinecomments stripmodeline
-autodefs = $(addprefix autodefs.,elisp maple matlab python)
+autodefs = $(addprefix autodefs.,elisp bash maple matlab python)
 pdfs     = $(addsuffix .pdf,knoweb indexsymbols stripmodeline typesetcomments autodefs)
 bbls     = $(addsuffix .bbl,$(basename $(pdfs)))
 man1pages = indexsymbols.1 inlinecomments.1 multilinecomments.1 stripmodeline.1 
