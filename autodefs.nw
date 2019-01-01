@@ -410,6 +410,49 @@ Additional characters may be letters, digits, or underscores.
 [a-zA-Z_][a-zA-Z_0-9]*
 @
 
+\section{Bash Filter}
+\label{sec:bash-filter}
+
+<<autodefs.bash>>=
+<<pound-bang>>
+<<bash header>>
+<<generated file warning>>
+<<copyright>>
+BEGIN {
+  <<clear [[codeflag]]>>
+  <<assign bash [[regex]] and [[subgroup]]>>
+}
+<<main loop>>
+END {}
+@ 
+
+<<bash header>>=
+# An awk filter for auto-indexing a Bash noweb source file.
+@ 
+
+\subsection{Regular Expression}
+\label{sec:bash:regular-expression}
+
+<<assign bash [[regex]] and [[subgroup]]>>=
+regex = "<<noweb code line regex>><<bash regex>>"
+subgroup = 1
+@
+
+The [[function]] keyword is not required in bash,
+however, for simplicity this filter mandates it.
+
+<<bash regex>>=
+function<<mws>>(<<bash function name regex>>)
+@
+
+The Bash reference manual specifies that a name
+must start with a letter or underscore.
+Additional characters may be letters, digits, or underscores.
+%%
+<<bash function name regex>>=
+[a-zA-Z_][a-zA-Z_0-9]*
+@
+
 \addcontentsline{toc}{section}{References}
 \bibliographystyle{plain}
 \bibliography{papers}
